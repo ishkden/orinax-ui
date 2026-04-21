@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useSession, signOut } from "next-auth/react";
 
 import { ChevronDown, LogOut, Settings, BarChart3, Users, Plug } from "lucide-react";
 
 const SERVICES = [
-  { label: "Аналитика", href: "https://analytics.orinax.ai", hosts: ["analytics.orinax.ai", "my.orinax.ai", "localhost"], icon: BarChart3 },
-  { label: "CRM", href: "https://crm.orinax.ai", hosts: ["crm.orinax.ai"], icon: Users },
-  { label: "Коннектор", href: "https://connector.orinax.ai", hosts: ["connector.orinax.ai"], icon: Plug },
+  { label: "Аналитика", href: "https://my.orinax.ai", icon: BarChart3 },
+  { label: "CRM", href: "https://crm.orinax.ai", icon: Users },
+  { label: "Коннектор", href: "https://connector.orinax.ai", icon: Plug },
 ];
 
 const ANALYTICS_HOSTS = ["analytics.orinax.ai", "my.orinax.ai", "localhost"];
@@ -65,19 +65,12 @@ export interface GlobalHeaderProps {
 export function GlobalHeader({ onLogout, activeService }: GlobalHeaderProps = {}) {
   const { data: session } = useSession();
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [currentHost, setCurrentHost] = useState("");
-  const [currentPath, setCurrentPath] = useState("");
   const [avatarError, setAvatarError] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const userName = session?.user?.name || session?.user?.email || "Пользователь";
   const userInitials = getInitials(userName);
   const userImage = session?.user?.image ?? null;
-
-  useLayoutEffect(() => {
-    setCurrentHost(window.location.hostname);
-    setCurrentPath(window.location.pathname);
-  }, []);
 
   const fetchAndApplyBg = useCallback(() => {
     const host = window.location.hostname;
@@ -120,9 +113,7 @@ export function GlobalHeader({ onLogout, activeService }: GlobalHeaderProps = {}
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const SHARED_PATHS = ["/profile", "/settings"];
-  const isSharedPath = SHARED_PATHS.some((p) => currentPath.startsWith(p));
-  const activeHref = activeService || (isSharedPath ? "" : SERVICES.find((s) => s.hosts.includes(currentHost))?.href ?? "");
+  const activeHref = activeService ?? "";
 
   const handleLogout = async () => {
     setDropdownOpen(false);
