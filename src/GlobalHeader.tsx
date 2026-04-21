@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { useSession, signOut } from "next-auth/react";
 
 import { ChevronDown, LogOut, Settings, BarChart3, Users, Plug } from "lucide-react";
@@ -74,7 +74,7 @@ export function GlobalHeader({ onLogout, activeService }: GlobalHeaderProps = {}
   const userInitials = getInitials(userName);
   const userImage = session?.user?.image ?? null;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setCurrentHost(window.location.hostname);
     setCurrentPath(window.location.pathname);
   }, []);
