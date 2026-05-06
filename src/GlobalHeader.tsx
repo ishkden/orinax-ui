@@ -1,14 +1,13 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { useSession, signOut } from "next-auth/react";
-
-import { ChevronDown, LogOut, Settings, BarChart3, Users, Plug } from "lucide-react";
+import { ChevronDown, LogOut, Settings, BarChart3, Users, Plug, HelpCircle } from "lucide-react";
 
 const SERVICES = [
-  { label: "Аналитика", href: "https://my.orinax.ai", icon: BarChart3 },
-  { label: "CRM", href: "https://crm.orinax.ai", icon: Users },
-  { label: "Коннектор", href: "https://connector.orinax.ai", icon: Plug },
+  { label: "Аналитика", href: "https://analytics.orinax.ai", hosts: ["analytics.orinax.ai", "my.orinax.ai", "localhost"], icon: BarChart3 },
+  { label: "CRM", href: "https://crm.orinax.ai", hosts: ["crm.orinax.ai"], icon: Users },
+  { label: "Коннектор", href: "https://connector.orinax.ai", hosts: ["connector.orinax.ai"], icon: Plug },
 ];
 
 const ANALYTICS_HOSTS = ["analytics.orinax.ai", "my.orinax.ai", "localhost"];
@@ -65,12 +64,19 @@ export interface GlobalHeaderProps {
 export function GlobalHeader({ onLogout, activeService }: GlobalHeaderProps = {}) {
   const { data: session } = useSession();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [currentHost, setCurrentHost] = useState("");
+  const [currentPath, setCurrentPath] = useState("");
   const [avatarError, setAvatarError] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const userName = session?.user?.name || session?.user?.email || "Пользователь";
   const userInitials = getInitials(userName);
   const userImage = session?.user?.image ?? null;
+
+  useLayoutEffect(() => {
+    setCurrentHost(window.location.hostname);
+    setCurrentPath(window.location.pathname);
+  }, []);
 
   const fetchAndApplyBg = useCallback(() => {
     const host = window.location.hostname;
@@ -113,7 +119,9 @@ export function GlobalHeader({ onLogout, activeService }: GlobalHeaderProps = {}
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const activeHref = activeService ?? "";
+  const SHARED_PATHS = ["/profile", "/settings"];
+  const isSharedPath = SHARED_PATHS.some((p) => currentPath.startsWith(p));
+  const activeHref = activeService || (isSharedPath ? "" : SERVICES.find((s) => s.hosts.includes(currentHost))?.href ?? "");
 
   const handleLogout = async () => {
     setDropdownOpen(false);
@@ -161,6 +169,14 @@ export function GlobalHeader({ onLogout, activeService }: GlobalHeaderProps = {}
 
         <div className="flex-1" />
 
+        <a
+          href="https://my.orinax.ai/knowledge"
+          title="База знаний"
+          className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors duration-200 shrink-0"
+        >
+          <HelpCircle size={16} strokeWidth={1.75} />
+        </a>
+
         <div className="relative shrink-0" ref={dropdownRef}>
           <button
             onClick={() => setDropdownOpen((v) => !v)}
@@ -200,7 +216,7 @@ export function GlobalHeader({ onLogout, activeService }: GlobalHeaderProps = {}
 
               <div className="py-1">
                 <a
-                  href="https://my.orinax.ai/profile"
+                  href={currentHost === "localhost" ? "/profile" : "https://my.orinax.ai/profile"}
                   onClick={() => setDropdownOpen(false)}
                   className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors duration-150"
                 >
