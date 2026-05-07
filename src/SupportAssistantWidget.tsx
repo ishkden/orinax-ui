@@ -34,7 +34,12 @@ import {
  *  - Streaming-ответ через ReadableStream → плавная подача текста.
  */
 
-const STORAGE_KEY = "orinax_support_history_v1";
+const STORAGE_KEY = "orinax_support_history_v2";
+/** Максимум сообщений в истории (5 обменов = достаточно контекста без раздувания) */
+const MAX_HISTORY = 10;
+/** TTL сессии — 1 час. После истечения история чистится автоматически. */
+const SESSION_TTL_MS = 60 * 60 * 1000;
+
 const ANALYTICS_HOSTS = new Set([
   "my.orinax.ai",
   "analytics.orinax.ai",
@@ -115,8 +120,8 @@ function buildQuickPrompts(ctx: PageContext): QuickPrompt[] {
   }
   if (path.includes("/connector") || path.includes("/integrations")) {
     return [
-      { label: "Подключить WhatsApp", query: "Как подключить WhatsApp-канал?" },
-      { label: "Подключить Telegram", query: "Как подключить Telegram-бота?" },
+      { label: "Подключить WhatsApp", query: "Как подключить WhatsApp через QR-код?" },
+      { label: "Подключить Telegram", query: "Как подключить Telegram по номеру телефона?" },
       { label: "Каналы и линии", query: "Что такое каналы и линии в коннекторе?" },
     ];
   }
@@ -135,14 +140,27 @@ function buildQuickPrompts(ctx: PageContext): QuickPrompt[] {
   ];
 }
 
+interface StoredHistory {
+  messages: ChatMessage[];
+  savedAt: number;
+}
+
+function isHistoryExpired(savedAt: number): boolean {
+  return Date.now() - savedAt > SESSION_TTL_MS;
+}
+
 function getInitialHistory(): ChatMessage[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
-    const parsed = JSON.parse(raw) as ChatMessage[];
-    if (!Array.isArray(parsed)) return [];
-    return parsed.slice(-20);
+    const stored = JSON.parse(raw) as StoredHistory;
+    if (!Array.isArray(stored.messages)) return [];
+    if (isHistoryExpired(stored.savedAt ?? 0)) {
+      sessionStorage.removeItem(STORAGE_KEY);
+      return [];
+    }
+    return stored.messages.slice(-MAX_HISTORY);
   } catch {
     return [];
   }
@@ -151,10 +169,19 @@ function getInitialHistory(): ChatMessage[] {
 function saveHistory(messages: ChatMessage[]) {
   if (typeof window === "undefined") return;
   try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(messages.slice(-20)));
+    const stored: StoredHistory = {
+      messages: messages.slice(-MAX_HISTORY),
+      savedAt: Date.now(),
+    };
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
   } catch {
     /* ignore */
   }
+}
+
+function clearHistory() {
+  if (typeof window === "undefined") return;
+  sessionStorage.removeItem(STORAGE_KEY);
 }
 
 /** Минимальный markdown → HTML: ссылки, **bold**, `code`, переводы строк. */
@@ -231,6 +258,25 @@ export function SupportAssistantWidget({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
+
+  // Auto-clear: проверяем TTL каждую минуту; очищаем без уведомления пользователя
+  useEffect(() => {
+    const id = setInterval(() => {
+      try {
+        const raw = sessionStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const stored = JSON.parse(raw) as StoredHistory;
+        if (isHistoryExpired(stored.savedAt ?? 0)) {
+          clearHistory();
+          setMessages([]);
+          setError(null);
+        }
+      } catch {
+        /* ignore */
+      }
+    }, 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   const sendQuery = useCallback(
     async (query: string) => {
@@ -338,7 +384,7 @@ export function SupportAssistantWidget({
   const handleClear = () => {
     setMessages([]);
     setError(null);
-    sessionStorage.removeItem(STORAGE_KEY);
+    clearHistory();
   };
 
   const handleStop = () => {
