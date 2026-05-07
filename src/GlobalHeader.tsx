@@ -169,13 +169,27 @@ export function GlobalHeader({ onLogout, activeService }: GlobalHeaderProps = {}
 
         <div className="flex-1" />
 
-        <a
-          href="https://my.orinax.ai/knowledge"
-          title="База знаний"
+        <button
+          type="button"
+          onClick={() => {
+            // Открывает SupportAssistantWidget (если он смонтирован в layout'е).
+            // Shift/Ctrl/Meta + клик — fallback на полную базу знаний.
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new Event("orinax:open-support"));
+            }
+          }}
+          onAuxClick={(e) => {
+            // Средняя кнопка мыши — открыть базу знаний в новой вкладке (legacy UX)
+            if (e.button === 1 && typeof window !== "undefined") {
+              e.preventDefault();
+              window.open("https://my.orinax.ai/knowledge", "_blank", "noopener,noreferrer");
+            }
+          }}
+          title="Помощник Orinax — спросите что угодно про платформу"
           className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors duration-200 shrink-0"
         >
           <HelpCircle size={16} strokeWidth={1.75} />
-        </a>
+        </button>
 
         <div className="relative shrink-0" ref={dropdownRef}>
           <button

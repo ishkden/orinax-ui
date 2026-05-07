@@ -4,12 +4,19 @@
   "description": "Shared UI components for Orinax platform",
   "main": "./index.ts",
   "types": "./index.ts",
-  "files": ["src", "index.ts"],
+  "files": [
+    "src",
+    "index.ts"
+  ],
   "peerDependencies": {
     "next": ">=14",
     "next-auth": ">=4",
     "react": ">=18",
     "react-dom": ">=18",
     "lucide-react": ">=0.400.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "typescript": "^5"
   }
 }
