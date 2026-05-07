@@ -13,7 +13,6 @@ import {
   X,
   RefreshCw,
   BookOpen,
-  Sparkles,
   Loader2,
 } from "lucide-react";
 
@@ -351,24 +350,9 @@ export function SupportAssistantWidget({
 
   return (
     <>
-      {/* Floating button (только когда чат закрыт) */}
-      {!open && (
-        <button
-          type="button"
-          onClick={() => {
-            setOpen(true);
-            setPageCtx(getPageContext());
-            setTimeout(() => inputRef.current?.focus(), 100);
-          }}
-          aria-label="Открыть помощника"
-          className="fixed bottom-5 right-5 z-[60] flex items-center gap-2 px-4 py-3 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all hover:scale-105 active:scale-100"
-        >
-          <Sparkles size={16} className="shrink-0" />
-          <span className="text-sm font-medium">Помощник</span>
-        </button>
-      )}
-
-      {/* Drawer */}
+      {/* Drawer — открывается только событием `orinax:open-support`
+          (кнопка "?" в GlobalHeader). Плавающую кнопку специально не
+          рендерим, чтобы не дублировать вход. */}
       {open && (
         <div className="fixed bottom-0 right-0 sm:bottom-5 sm:right-5 z-[60] w-full sm:w-[420px] h-full sm:h-[640px] sm:max-h-[calc(100vh-2.5rem)] bg-white sm:rounded-2xl shadow-2xl shadow-zinc-300/40 ring-1 ring-zinc-200 flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 fade-in-0 duration-200">
           {/* Header */}
