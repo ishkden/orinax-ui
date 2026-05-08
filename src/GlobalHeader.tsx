@@ -4,6 +4,52 @@ import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react
 import { useSession, signOut } from "next-auth/react";
 import { ChevronDown, LogOut, Settings, BarChart3, Users, Plug, HelpCircle } from "lucide-react";
 
+function ThemeToggle() {
+  const [isDark, setIsDark] = useState(true);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("orinax-theme");
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const dark = saved ? saved === "dark" : prefersDark;
+    setIsDark(dark);
+    document.documentElement.classList.toggle("dark", dark);
+  }, []);
+
+  const toggle = () => {
+    const next = !isDark;
+    setIsDark(next);
+    localStorage.setItem("orinax-theme", next ? "dark" : "light");
+    document.documentElement.classList.toggle("dark", next);
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors duration-200 shrink-0"
+      title={isDark ? "Переключить на светлую тему" : "Переключить на тёмную тему"}
+    >
+      {isDark ? (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="5"/>
+          <line x1="12" y1="1" x2="12" y2="3"/>
+          <line x1="12" y1="21" x2="12" y2="23"/>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+          <line x1="1" y1="12" x2="3" y2="12"/>
+          <line x1="21" y1="12" x2="23" y2="12"/>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+        </svg>
+      ) : (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      )}
+    </button>
+  );
+}
+
 const SERVICES = [
   { label: "Аналитика", href: "https://analytics.orinax.ai", hosts: ["analytics.orinax.ai", "my.orinax.ai", "localhost"], icon: BarChart3 },
   { label: "CRM", href: "https://crm.orinax.ai", hosts: ["crm.orinax.ai"], icon: Users },
@@ -168,6 +214,8 @@ export function GlobalHeader({ onLogout, activeService }: GlobalHeaderProps = {}
         </nav>
 
         <div className="flex-1" />
+
+        <ThemeToggle />
 
         <button
           type="button"
