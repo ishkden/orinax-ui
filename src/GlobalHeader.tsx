@@ -26,7 +26,7 @@ function ThemeToggle() {
     <button
       type="button"
       onClick={toggle}
-      className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors duration-200 shrink-0"
+      className="p-1.5 rounded-md text-gray-400 dark:text-[#71717a] hover:text-gray-600 dark:hover:text-[#a1a1aa] hover:bg-gray-100 dark:hover:bg-[#27272a] transition-colors duration-200 shrink-0"
       title={isDark ? "Переключить на светлую тему" : "Переключить на тёмную тему"}
     >
       {isDark ? (
@@ -179,7 +179,7 @@ export function GlobalHeader({ onLogout, activeService }: GlobalHeaderProps = {}
   };
 
   return (
-    <header className="bg-white border-b border-gray-200 h-12 flex items-center px-5 shrink-0 z-20">
+    <header className="bg-white dark:bg-[#18181b] border-b border-gray-200 dark:border-[#27272a] h-12 flex items-center px-5 shrink-0 z-20">
       <div className="w-full max-w-[1400px] mx-auto flex items-center gap-5">
 
         <img
@@ -189,7 +189,7 @@ export function GlobalHeader({ onLogout, activeService }: GlobalHeaderProps = {}
           draggable={false}
         />
 
-        <div className="h-4 w-px bg-gray-200 shrink-0 hidden sm:block" />
+        <div className="h-4 w-px bg-gray-200 dark:bg-[#27272a] shrink-0 hidden sm:block" />
 
         <nav className="hidden sm:flex items-center gap-0.5">
           {SERVICES.map((s) => {
@@ -202,8 +202,8 @@ export function GlobalHeader({ onLogout, activeService }: GlobalHeaderProps = {}
                 className={[
                   "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors duration-200 whitespace-nowrap",
                   isActive
-                    ? "bg-gray-100 text-gray-900"
-                    : "text-gray-500 hover:text-gray-900 hover:bg-gray-100",
+                    ? "bg-gray-100 dark:bg-[#27272a] text-gray-900 dark:text-[#fafafa]"
+                    : "text-gray-500 dark:text-[#a1a1aa] hover:text-gray-900 dark:hover:text-[#fafafa] hover:bg-gray-100 dark:hover:bg-[#27272a]",
                 ].join(" ")}
               >
                 <Icon size={13} strokeWidth={isActive ? 2 : 1.5} className="shrink-0" />
@@ -234,7 +234,7 @@ export function GlobalHeader({ onLogout, activeService }: GlobalHeaderProps = {}
             }
           }}
           title="Помощник Orinax — спросите что угодно про платформу"
-          className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors duration-200 shrink-0"
+          className="p-1.5 rounded-md text-gray-400 dark:text-[#71717a] hover:text-gray-600 dark:hover:text-[#a1a1aa] hover:bg-gray-100 dark:hover:bg-[#27272a] transition-colors duration-200 shrink-0"
         >
           <HelpCircle size={16} strokeWidth={1.75} />
         </button>
@@ -242,7 +242,7 @@ export function GlobalHeader({ onLogout, activeService }: GlobalHeaderProps = {}
         <div className="relative shrink-0" ref={dropdownRef}>
           <button
             onClick={() => setDropdownOpen((v) => !v)}
-            className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors duration-200"
+            className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-100 dark:hover:bg-[#27272a] transition-colors duration-200"
           >
             {userImage && !avatarError ? (
               <img
@@ -256,21 +256,21 @@ export function GlobalHeader({ onLogout, activeService }: GlobalHeaderProps = {}
                 {userInitials}
               </div>
             )}
-            <span className="hidden sm:block text-[13px] text-gray-500 max-w-[120px] truncate">
+            <span className="hidden sm:block text-[13px] text-gray-500 dark:text-[#a1a1aa] max-w-[120px] truncate">
               {userName}
             </span>
             <ChevronDown
               size={12}
-              className={`text-gray-400 transition-transform duration-200 ${dropdownOpen ? "rotate-180" : ""}`}
+              className={`text-gray-400 dark:text-[#71717a] transition-transform duration-200 ${dropdownOpen ? "rotate-180" : ""}`}
             />
           </button>
 
           {dropdownOpen && (
-            <div className="absolute right-0 top-full mt-1.5 w-52 bg-white ring-1 ring-gray-200 rounded-lg shadow-xl shadow-gray-200/50 z-50 overflow-hidden">
-              <div className="px-3.5 py-2.5 border-b border-gray-100">
-                <p className="text-xs font-medium text-gray-900 truncate">{userName}</p>
+            <div className="absolute right-0 top-full mt-1.5 w-52 bg-white dark:bg-[#18181b] ring-1 ring-gray-200 dark:ring-[#27272a] rounded-lg shadow-xl shadow-gray-200/50 dark:shadow-black/30 z-50 overflow-hidden">
+              <div className="px-3.5 py-2.5 border-b border-gray-100 dark:border-[#27272a]">
+                <p className="text-xs font-medium text-gray-900 dark:text-[#fafafa] truncate">{userName}</p>
                 {session?.user?.email && session.user.email !== userName && (
-                  <p className="text-[11px] text-gray-500 truncate mt-0.5">
+                  <p className="text-[11px] text-gray-500 dark:text-[#71717a] truncate mt-0.5">
                     {session.user.email}
                   </p>
                 )}
@@ -280,14 +280,14 @@ export function GlobalHeader({ onLogout, activeService }: GlobalHeaderProps = {}
                 <a
                   href={currentHost === "localhost" ? "/profile" : "https://my.orinax.ai/profile"}
                   onClick={() => setDropdownOpen(false)}
-                  className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors duration-150"
+                  className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] text-gray-600 dark:text-[#a1a1aa] hover:text-gray-900 dark:hover:text-[#fafafa] hover:bg-gray-50 dark:hover:bg-[#27272a] transition-colors duration-150"
                 >
-                  <Settings size={14} className="text-gray-400 shrink-0" />
+                  <Settings size={14} className="text-gray-400 dark:text-[#71717a] shrink-0" />
                   Настройки
                 </a>
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-2.5 px-3.5 py-2 text-[13px] text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors duration-150"
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2 text-[13px] text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors duration-150"
                 >
                   <LogOut size={14} className="shrink-0" />
                   Выйти
