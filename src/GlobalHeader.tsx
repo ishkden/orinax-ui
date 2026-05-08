@@ -18,7 +18,9 @@ function ThemeToggle() {
   const toggle = () => {
     const next = !isDark;
     setIsDark(next);
-    localStorage.setItem("orinax-theme", next ? "dark" : "light");
+    const val = next ? "dark" : "light";
+    localStorage.setItem("orinax-theme", val);
+    document.cookie = `orinax-theme=${val}; domain=.orinax.ai; path=/; max-age=31536000; samesite=lax`;
     document.documentElement.classList.toggle("dark", next);
   };
 
