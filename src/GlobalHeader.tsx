@@ -254,7 +254,7 @@ export function GlobalHeader({ onLogout, activeService }: GlobalHeaderProps = {}
                 className="w-6 h-6 rounded-full object-cover shrink-0"
               />
             ) : (
-              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-[10px] font-bold text-white shrink-0">
+              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-[10px] font-bold text-white shrink-0">
                 {userInitials}
               </div>
             )}

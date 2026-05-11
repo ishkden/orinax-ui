@@ -206,7 +206,7 @@ function renderMarkdown(text: string): string {
 
   const withLinks = withBold.replace(
     /\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)/g,
-    '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-indigo-700 underline underline-offset-2">$1</a>',
+    '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-700 underline underline-offset-2">$1</a>',
   );
 
   return withLinks.replace(/\n/g, "<br/>");
@@ -408,8 +408,8 @@ export function SupportAssistantWidget({
       {open && (
         <div className="fixed bottom-0 right-0 sm:bottom-5 sm:right-5 z-[60] w-full sm:w-[420px] h-full sm:h-[640px] sm:max-h-[calc(100vh-2.5rem)] bg-white sm:rounded-2xl shadow-2xl shadow-zinc-300/40 ring-1 ring-zinc-200 flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 fade-in-0 duration-200">
           {/* Header */}
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-zinc-100 bg-gradient-to-br from-indigo-50 to-purple-50 shrink-0">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shrink-0">
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-zinc-100 bg-gradient-to-br from-blue-50 to-purple-50 shrink-0">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shrink-0">
               <Bot size={16} className="text-white" />
             </div>
             <div className="flex-1 min-w-0">
@@ -451,7 +451,7 @@ export function SupportAssistantWidget({
                       <br />
                       <span className="text-[12px] text-zinc-500 mt-1 inline-block">
                         Сейчас вы здесь:{" "}
-                        <span className="font-mono text-indigo-700">
+                        <span className="font-mono text-blue-700">
                           {pageCtx.pathname}
                         </span>
                       </span>
@@ -465,7 +465,7 @@ export function SupportAssistantWidget({
                       type="button"
                       key={p.label}
                       onClick={() => void sendQuery(p.query)}
-                      className="text-left text-[13px] px-3 py-2 rounded-xl border border-zinc-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/40 text-zinc-700 hover:text-zinc-900 transition-colors"
+                      className="text-left text-[13px] px-3 py-2 rounded-xl border border-zinc-200 bg-white hover:border-blue-300 hover:bg-blue-50/40 text-zinc-700 hover:text-zinc-900 transition-colors"
                     >
                       {p.label}
                     </button>
@@ -486,7 +486,7 @@ export function SupportAssistantWidget({
                   className={[
                     "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-[13.5px] leading-relaxed shadow-sm",
                     m.role === "user"
-                      ? "bg-indigo-600 text-white rounded-br-md"
+                      ? "bg-blue-600 text-white rounded-br-md"
                       : "bg-white border border-zinc-100 text-zinc-800 rounded-bl-md",
                   ].join(" ")}
                 >
@@ -530,7 +530,7 @@ export function SupportAssistantWidget({
                 }}
                 placeholder="Спросите про любую функцию платформы…"
                 rows={1}
-                className="flex-1 resize-none max-h-32 min-h-[36px] rounded-xl border border-zinc-200 px-3 py-2 text-[13.5px] text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-400/40 focus:border-indigo-400"
+                className="flex-1 resize-none max-h-32 min-h-[36px] rounded-xl border border-zinc-200 px-3 py-2 text-[13.5px] text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-400/40 focus:border-blue-400"
                 disabled={streaming}
               />
               {streaming ? (
@@ -546,7 +546,7 @@ export function SupportAssistantWidget({
                 <button
                   type="submit"
                   disabled={!input.trim()}
-                  className="shrink-0 w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-indigo-500/30 transition-all flex items-center justify-center"
+                  className="shrink-0 w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-blue-500/30 transition-all flex items-center justify-center"
                   title="Отправить (Enter)"
                 >
                   <Send size={15} />
@@ -558,7 +558,7 @@ export function SupportAssistantWidget({
                 href="https://my.orinax.ai/knowledge"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[11px] text-zinc-500 hover:text-indigo-600 inline-flex items-center gap-1.5"
+                className="text-[11px] text-zinc-500 hover:text-blue-600 inline-flex items-center gap-1.5"
               >
                 <BookOpen size={11} />
                 База знаний
