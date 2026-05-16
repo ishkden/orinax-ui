@@ -22,6 +22,8 @@ function ThemeToggle() {
     localStorage.setItem("orinax-theme", val);
     document.cookie = `orinax-theme=${val}; domain=.orinax.ai; path=/; max-age=31536000; samesite=lax`;
     document.documentElement.classList.toggle("dark", next);
+    // Notify next-themes (and any other storage listeners) in the current tab
+    window.dispatchEvent(new StorageEvent("storage", { key: "orinax-theme", newValue: val, storageArea: localStorage }));
   };
 
   return (
