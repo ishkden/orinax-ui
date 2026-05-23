@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { useSession, signOut } from "next-auth/react";
-import { ChevronDown, LogOut, Settings, BarChart3, Users, Plug, HelpCircle } from "lucide-react";
+import { ChevronDown, LogOut, Settings, BarChart3, Users, Plug, HelpCircle, Megaphone } from "lucide-react";
 
 function ThemeToggle() {
   const [isDark, setIsDark] = useState(true);
@@ -55,9 +55,10 @@ function ThemeToggle() {
 }
 
 const SERVICES = [
-  { label: "Аналитика", href: "https://analytics.orinax.ai", hosts: ["analytics.orinax.ai", "my.orinax.ai", "localhost"], icon: BarChart3 },
+  { label: "Аналитика", href: "https://my.orinax.ai", hosts: ["analytics.orinax.ai", "my.orinax.ai", "localhost"], icon: BarChart3 },
   { label: "CRM", href: "https://crm.orinax.ai", hosts: ["crm.orinax.ai"], icon: Users },
   { label: "Коннектор", href: "https://connector.orinax.ai", hosts: ["connector.orinax.ai"], icon: Plug },
+  { label: "Маркетинг", href: "https://marketing.orinax.ai", hosts: ["marketing.orinax.ai"], icon: Megaphone },
 ];
 
 const ANALYTICS_HOSTS = ["analytics.orinax.ai", "my.orinax.ai", "localhost"];
