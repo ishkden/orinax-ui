@@ -55,7 +55,7 @@ function ThemeToggle() {
 }
 
 const SERVICES = [
-  { label: "Аналитика", href: "https://my.orinax.ai", hosts: ["analytics.orinax.ai", "my.orinax.ai", "localhost"], icon: BarChart3 },
+  { label: "Аналитика", href: "https://analytics.orinax.ai", hosts: ["analytics.orinax.ai", "my.orinax.ai", "localhost"], icon: BarChart3 },
   { label: "CRM", href: "https://crm.orinax.ai", hosts: ["crm.orinax.ai"], icon: Users },
   { label: "Коннектор", href: "https://connector.orinax.ai", hosts: ["connector.orinax.ai"], icon: Plug },
   { label: "Маркетинг", href: "https://marketing.orinax.ai", hosts: ["marketing.orinax.ai"], icon: Megaphone },
