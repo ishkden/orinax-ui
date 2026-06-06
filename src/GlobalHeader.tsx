@@ -9,8 +9,8 @@ function ThemeToggle() {
 
   useEffect(() => {
     const saved = localStorage.getItem("orinax-theme");
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const dark = saved ? saved === "dark" : prefersDark;
+    // Never fall back to system preference — default to dark if nothing saved
+    const dark = saved !== null ? saved === "dark" : true;
     setIsDark(dark);
     document.documentElement.classList.toggle("dark", dark);
   }, []);
