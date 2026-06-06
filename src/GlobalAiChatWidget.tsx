@@ -19,6 +19,10 @@ import {
   FileText,
   ChevronDown,
   Check,
+  Mic,
+  Image,
+  PenLine,
+  Search,
 } from "lucide-react";
 
 const ANALYTICS_HOSTS = new Set([
@@ -51,7 +55,6 @@ interface ChatMessage {
   role: string;
   content: string;
   metadata?: { attachmentFileIds?: string[] } | null;
-  /** Display-only attachment previews (not persisted). */
   _pendingFiles?: PendingFile[];
 }
 
@@ -75,7 +78,7 @@ function SectionSpinner() {
   return (
     <div className="flex items-center justify-center py-16">
       <svg
-        className="animate-spin text-slate-400"
+        className="animate-spin text-zinc-500"
         width="22"
         height="22"
         viewBox="0 0 24 24"
@@ -101,11 +104,11 @@ function renderMarkdown(text: string): string {
   return escaped
     .replace(
       /```([\s\S]*?)```/g,
-      '<pre class="my-2 p-2 rounded bg-zinc-100 dark:bg-zinc-800 text-xs overflow-x-auto"><code>$1</code></pre>',
+      '<pre class="my-2 p-3 rounded-xl bg-black/30 text-xs overflow-x-auto border border-white/10"><code>$1</code></pre>',
     )
     .replace(
       /`([^`]+)`/g,
-      '<code class="px-1 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-xs">$1</code>',
+      '<code class="px-1 py-0.5 rounded bg-black/30 text-xs border border-white/10">$1</code>',
     )
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/\n/g, "<br/>");
@@ -143,38 +146,38 @@ function ModelPicker({
         type="button"
         disabled={disabled || models.length === 0}
         onClick={() => setDropOpen((p) => !p)}
-        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-[12px] text-zinc-700 dark:text-zinc-300 hover:border-zinc-300 dark:hover:border-zinc-600 transition-colors max-w-[200px] disabled:opacity-40"
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-[13px] text-white/80 hover:text-white transition-colors disabled:opacity-40 border border-white/10"
       >
-        <span className="truncate max-w-[150px]">
+        <span className="truncate max-w-[180px]">
           {models.length === 0 ? "Загрузка…" : (current?.label ?? "Модель")}
         </span>
         <ChevronDown
-          size={12}
+          size={13}
           className={[
-            "shrink-0 text-zinc-400 transition-transform",
+            "shrink-0 text-white/50 transition-transform",
             dropOpen ? "rotate-180" : "",
           ].join(" ")}
         />
       </button>
 
       {dropOpen && models.length > 0 && (
-        <div className="absolute right-0 top-full mt-1.5 w-56 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-xl z-50 overflow-hidden">
-          <div className="py-1 max-h-64 overflow-y-auto">
+        <div className="absolute left-0 top-full mt-2 w-64 rounded-2xl border border-white/10 bg-[#1a1a2e]/95 backdrop-blur-xl shadow-2xl z-50 overflow-hidden">
+          <div className="py-1.5 max-h-72 overflow-y-auto">
             {models.map((m) => (
               <button
                 key={m.id}
                 type="button"
                 onClick={() => { onChange(m.id); setDropOpen(false); }}
                 className={[
-                  "w-full flex items-center justify-between gap-2 px-3 py-2 text-[13px] text-left transition-colors",
+                  "w-full flex items-center justify-between gap-2 px-4 py-2.5 text-[13px] text-left transition-colors",
                   m.id === value
-                    ? "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300"
-                    : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800",
+                    ? "text-white bg-white/10"
+                    : "text-white/70 hover:text-white hover:bg-white/5",
                 ].join(" ")}
               >
                 <span className="truncate">{m.label}</span>
                 {m.id === value && (
-                  <Check size={13} className="shrink-0 text-blue-500" />
+                  <Check size={13} className="shrink-0 text-blue-400" />
                 )}
               </button>
             ))}
@@ -196,23 +199,17 @@ export function GlobalAiChatWidget() {
   const [selectedModel, setSelectedModel] = useState("");
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
-  const [contextUsed, setContextUsed] = useState(0);
-  const [contextMax, setContextMax] = useState(128000);
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    const openHandler = () => {
-      // #region agent log
-      fetch('http://127.0.0.1:7835/ingest/7c901cfb-a630-4609-920a-02b605d84df8',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'08c22e'},body:JSON.stringify({sessionId:'08c22e',location:'GlobalAiChatWidget.tsx:openHandler',message:'AI chat opening',data:{hasDark:document.documentElement.classList.contains("dark"),htmlClasses:document.documentElement.className,host:window.location.hostname},runId:'run1',hypothesisId:'H-A,H-B',timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
-      setOpen(true);
-    };
+    const openHandler = () => setOpen(true);
     window.addEventListener("orinax:open-ai-chat", openHandler);
     return () => window.removeEventListener("orinax:open-ai-chat", openHandler);
   }, []);
@@ -226,18 +223,21 @@ export function GlobalAiChatWidget() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
+  // Prevent body scroll when open
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [open]);
+
   const loadModels = useCallback(async () => {
-    // #region agent log
-    const apiBase = getApiBase();
-    const modelsUrl = apiUrl(`/api/ai-models?module=${MODULE}`);
-    // #endregion
     try {
-      const res = await fetch(modelsUrl, {
+      const res = await fetch(apiUrl(`/api/ai-models?module=${MODULE}`), {
         credentials: "include",
       });
-      // #region agent log
-      fetch('http://127.0.0.1:7835/ingest/7c901cfb-a630-4609-920a-02b605d84df8',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'08c22e'},body:JSON.stringify({sessionId:'08c22e',location:'GlobalAiChatWidget.tsx:loadModels',message:'models API response',data:{apiBase,modelsUrl,status:res.status,ok:res.ok,host:typeof window!=='undefined'?window.location.hostname:''},runId:'run1',hypothesisId:'H-C',timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       if (!res.ok) return;
       const data = (await res.json()) as { models: ModelOption[] };
       const list = data.models ?? [];
@@ -247,10 +247,8 @@ export function GlobalAiChatWidget() {
           prev && list.some((m) => m.id === prev) ? prev : list[0].id,
         );
       }
-    } catch (err) {
-      // #region agent log
-      fetch('http://127.0.0.1:7835/ingest/7c901cfb-a630-4609-920a-02b605d84df8',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'08c22e'},body:JSON.stringify({sessionId:'08c22e',location:'GlobalAiChatWidget.tsx:loadModels:catch',message:'models API error',data:{apiBase,modelsUrl,error:String(err)},runId:'run1',hypothesisId:'H-C',timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
+    } catch {
+      /* cross-origin or network error */
     }
   }, []);
 
@@ -260,16 +258,10 @@ export function GlobalAiChatWidget() {
       const res = await fetch(apiUrl("/api/global-ai-chat/sessions"), {
         credentials: "include",
       });
-      // #region agent log
-      fetch('http://127.0.0.1:7835/ingest/7c901cfb-a630-4609-920a-02b605d84df8',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'08c22e'},body:JSON.stringify({sessionId:'08c22e',location:'GlobalAiChatWidget.tsx:loadSessions',message:'sessions API response',data:{status:res.status,ok:res.ok,host:typeof window!=='undefined'?window.location.hostname:''},runId:'run1',hypothesisId:'H-C',timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       if (!res.ok) throw new Error("load_sessions_failed");
       const data = (await res.json()) as { sessions: ChatSession[] };
       setSessions(data.sessions ?? []);
-    } catch (err) {
-      // #region agent log
-      fetch('http://127.0.0.1:7835/ingest/7c901cfb-a630-4609-920a-02b605d84df8',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'08c22e'},body:JSON.stringify({sessionId:'08c22e',location:'GlobalAiChatWidget.tsx:loadSessions:catch',message:'sessions API error',data:{error:String(err),host:typeof window!=='undefined'?window.location.hostname:''},runId:'run1',hypothesisId:'H-C',timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
+    } catch {
       setError("Не удалось загрузить чаты");
     } finally {
       setSessionsLoading(false);
@@ -292,8 +284,6 @@ export function GlobalAiChatWidget() {
       setMessages(data.messages ?? []);
       setPendingFiles([]);
       setSelectedModel((prev) => data.session.model ?? prev);
-      setContextUsed(data.session.contextUsedTokens ?? 0);
-      setContextMax(data.session.contextMaxTokens ?? 128000);
     } catch {
       setError("Не удалось загрузить чат");
     } finally {
@@ -307,7 +297,6 @@ export function GlobalAiChatWidget() {
     setMessages([]);
     setPendingFiles([]);
     setError(null);
-    setContextUsed(0);
     void loadModels();
     void loadSessions();
   }, [open, loadModels, loadSessions]);
@@ -318,22 +307,6 @@ export function GlobalAiChatWidget() {
       behavior: "smooth",
     });
   }, [messages, streaming]);
-
-  const ensureSession = async (): Promise<string | null> => {
-    if (activeId) return activeId;
-    const res = await fetch(apiUrl("/api/global-ai-chat/sessions"), {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model: selectedModel || undefined }),
-    });
-    if (!res.ok) return null;
-    const data = (await res.json()) as { session: ChatSession };
-    setSessions((prev) => [data.session, ...prev]);
-    setActiveId(data.session.id);
-    if (data.session.model) setSelectedModel(data.session.model);
-    return data.session.id;
-  };
 
   const createSession = async () => {
     setError(null);
@@ -363,6 +336,22 @@ export function GlobalAiChatWidget() {
       setMessages([]);
       setPendingFiles([]);
     }
+  };
+
+  const ensureSession = async (): Promise<string | null> => {
+    if (activeId) return activeId;
+    const res = await fetch(apiUrl("/api/global-ai-chat/sessions"), {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: selectedModel || undefined }),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { session: ChatSession };
+    setSessions((prev) => [data.session, ...prev]);
+    setActiveId(data.session.id);
+    if (data.session.model) setSelectedModel(data.session.model);
+    return data.session.id;
   };
 
   const handleFileUpload = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -401,10 +390,6 @@ export function GlobalAiChatWidget() {
     } finally {
       setUploading(false);
     }
-  };
-
-  const handleAttachClick = () => {
-    fileInputRef.current?.click();
   };
 
   const sendMessage = async (text: string) => {
@@ -509,11 +494,6 @@ export function GlobalAiChatWidget() {
                     : m,
                 ),
               );
-            } else if (event === "meta") {
-              if (typeof payload.contextUsedTokens === "number")
-                setContextUsed(payload.contextUsedTokens);
-              if (typeof payload.contextMaxTokens === "number")
-                setContextMax(payload.contextMaxTokens);
             } else if (event === "error") {
               setError(String(payload.error ?? "stream_error"));
             } else if (event === "done") {
@@ -537,130 +517,196 @@ export function GlobalAiChatWidget() {
     void sendMessage(input);
   };
 
-  const contextPct =
-    contextMax > 0 ? Math.min(100, Math.round((contextUsed / contextMax) * 100)) : 0;
+  const handleQuickAction = (text: string) => {
+    setInput(text);
+    setTimeout(() => textareaRef.current?.focus(), 0);
+  };
 
   if (!open) return null;
 
+  const hasMessages = messages.length > 0;
+
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-6">
-      <button
-        type="button"
-        className="absolute inset-0 bg-black/50 dark:bg-black/70"
-        aria-label="Закрыть"
-        onClick={() => setOpen(false)}
+    <div
+      className="fixed inset-0 z-[9999] flex"
+      style={{
+        background: "radial-gradient(ellipse at 20% 50%, #1a1a3e 0%, #0d0d1a 40%, #050508 100%)",
+      }}
+    >
+      {/* Star particles */}
+      <div
+        className="absolute inset-0 pointer-events-none overflow-hidden"
+        aria-hidden="true"
+        style={{
+          backgroundImage: `
+            radial-gradient(1px 1px at 10% 15%, rgba(255,255,255,0.35) 0%, transparent 100%),
+            radial-gradient(1px 1px at 25% 40%, rgba(255,255,255,0.2) 0%, transparent 100%),
+            radial-gradient(1.5px 1.5px at 40% 10%, rgba(255,255,255,0.3) 0%, transparent 100%),
+            radial-gradient(1px 1px at 55% 70%, rgba(255,255,255,0.25) 0%, transparent 100%),
+            radial-gradient(1px 1px at 65% 25%, rgba(255,255,255,0.2) 0%, transparent 100%),
+            radial-gradient(1.5px 1.5px at 75% 55%, rgba(255,255,255,0.3) 0%, transparent 100%),
+            radial-gradient(1px 1px at 85% 15%, rgba(255,255,255,0.25) 0%, transparent 100%),
+            radial-gradient(1px 1px at 90% 80%, rgba(255,255,255,0.2) 0%, transparent 100%),
+            radial-gradient(1px 1px at 15% 85%, rgba(255,255,255,0.3) 0%, transparent 100%),
+            radial-gradient(1.5px 1.5px at 35% 60%, rgba(255,255,255,0.15) 0%, transparent 100%),
+            radial-gradient(1px 1px at 50% 90%, rgba(255,255,255,0.25) 0%, transparent 100%),
+            radial-gradient(1px 1px at 70% 45%, rgba(255,255,255,0.2) 0%, transparent 100%),
+            radial-gradient(1px 1px at 80% 35%, rgba(255,255,255,0.3) 0%, transparent 100%),
+            radial-gradient(1.5px 1.5px at 5% 55%, rgba(255,255,255,0.2) 0%, transparent 100%),
+            radial-gradient(1px 1px at 95% 45%, rgba(255,255,255,0.25) 0%, transparent 100%)
+          `,
+        }}
       />
 
-      <div className="relative w-full max-w-[1100px] h-[min(88vh,820px)] bg-white dark:bg-[#18181b] rounded-2xl shadow-2xl ring-1 ring-zinc-200 dark:ring-zinc-800 flex min-h-0">
-
-        {/* ── Sidebar ─────────────────────────────────────────── */}
-        <aside className="hidden sm:flex w-[220px] shrink-0 flex-col border-r border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-[#111113] min-h-0 overflow-hidden rounded-l-2xl">
-          <div className="px-3 py-2.5 border-b border-zinc-200 dark:border-zinc-800">
-            <button
-              type="button"
-              onClick={() => void createSession()}
-              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[13px] text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200/60 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+      {/* ── Left Sidebar ─────────────────────────────────────── */}
+      <aside
+        className="hidden sm:flex w-[260px] shrink-0 flex-col border-r min-h-0"
+        style={{
+          borderColor: "rgba(255,255,255,0.08)",
+          background: "rgba(0,0,0,0.3)",
+        }}
+      >
+        {/* Sidebar header */}
+        <div className="px-4 pt-5 pb-3">
+          <div className="flex items-center gap-2 mb-4">
+            <div
+              className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+              style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}
             >
-              <Plus size={13} />
-              Новый чат
-            </button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-1.5 space-y-px">
-            {sessionsLoading ? (
-              <SectionSpinner />
-            ) : sessions.length === 0 ? (
-              <p className="text-xs text-zinc-400 px-2 py-4 text-center">Нет чатов</p>
-            ) : (
-              sessions.map((s) => (
-                <div
-                  key={s.id}
-                  className={[
-                    "group flex items-center gap-1 rounded-lg px-2 py-1.5 cursor-pointer transition-colors",
-                    activeId === s.id
-                      ? "bg-white dark:bg-zinc-800 ring-1 ring-zinc-200 dark:ring-zinc-700"
-                      : "hover:bg-white/70 dark:hover:bg-zinc-800/50",
-                  ].join(" ")}
-                >
-                  <button
-                    type="button"
-                    className="flex-1 min-w-0 text-left flex items-center gap-1.5"
-                    onClick={() => void loadSession(s.id)}
-                  >
-                    <MessageSquare
-                      size={11}
-                      className="text-zinc-400 shrink-0"
-                    />
-                    <span className="text-[12.5px] text-zinc-700 dark:text-zinc-200 truncate leading-tight">
-                      {s.title}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    title="Удалить"
-                    onClick={() => void deleteSession(s.id)}
-                    className="opacity-0 group-hover:opacity-100 p-1 text-zinc-400 hover:text-red-500 transition-opacity shrink-0"
-                  >
-                    <Trash2 size={11} />
-                  </button>
-                </div>
-              ))
-            )}
-          </div>
-        </aside>
-
-        {/* ── Main pane ────────────────────────────────────────── */}
-        <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
-
-          {/* Header */}
-          <header className="flex items-center gap-2 px-3 py-2 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
-            <div className="flex-1" />
-            <ModelPicker
-              models={models}
-              value={selectedModel}
-              onChange={setSelectedModel}
-              disabled={streaming}
-            />
-
-            {/* Context mini-bar */}
-            <div className="hidden sm:flex items-center gap-1.5 shrink-0">
-              <div className="w-14 h-1 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
-                <div
-                  className={[
-                    "h-full rounded-full transition-all",
-                    contextPct > 85 ? "bg-amber-500" : "bg-blue-500",
-                  ].join(" ")}
-                  style={{ width: `${Math.max(contextPct, 1)}%` }}
-                />
-              </div>
-              <span className="text-[11px] text-zinc-400 tabular-nums w-7">
-                {contextPct}%
-              </span>
+              <MessageSquare size={14} className="text-white" />
             </div>
+            <span className="text-white font-semibold text-[15px]">Orinax AI</span>
+          </div>
 
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="p-1.5 rounded-md text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 shrink-0"
-              aria-label="Закрыть"
-            >
-              <X size={18} />
-            </button>
-          </header>
-
-          {/* Messages */}
-          <div
-            ref={scrollRef}
-            className="flex-1 overflow-y-auto px-4 py-4 space-y-3 min-h-0"
+          <button
+            type="button"
+            onClick={() => void createSession()}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] text-white/70 hover:text-white hover:bg-white/10 transition-colors border border-white/10 hover:border-white/20"
           >
-            {chatLoading ? (
-              <SectionSpinner />
-            ) : messages.length === 0 ? (
-              <div className="text-center py-14 text-zinc-400 text-sm">
-                Выберите модель и начните беседу
+            <Plus size={14} />
+            Новый чат
+          </button>
+        </div>
+
+        {/* Chat list */}
+        <div className="flex-1 overflow-y-auto px-2 pb-3 min-h-0 space-y-px">
+          {sessionsLoading ? (
+            <SectionSpinner />
+          ) : sessions.length === 0 ? (
+            <p className="text-xs text-white/30 px-3 py-6 text-center">Нет чатов</p>
+          ) : (
+            sessions.map((s) => (
+              <div
+                key={s.id}
+                className={[
+                  "group flex items-center gap-1 rounded-xl px-2 py-2 cursor-pointer transition-colors",
+                  activeId === s.id
+                    ? "bg-white/15"
+                    : "hover:bg-white/8",
+                ].join(" ")}
+                style={activeId !== s.id ? {} : {}}
+              >
+                <button
+                  type="button"
+                  className="flex-1 min-w-0 text-left flex items-center gap-2"
+                  onClick={() => void loadSession(s.id)}
+                >
+                  <MessageSquare
+                    size={12}
+                    className="text-white/40 shrink-0"
+                  />
+                  <span className="text-[12.5px] text-white/75 truncate leading-tight">
+                    {s.title}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  title="Удалить"
+                  onClick={() => void deleteSession(s.id)}
+                  className="opacity-0 group-hover:opacity-100 p-1 text-white/30 hover:text-red-400 transition-all shrink-0"
+                >
+                  <Trash2 size={12} />
+                </button>
               </div>
-            ) : (
-              messages.map((m) => (
+            ))
+          )}
+        </div>
+      </aside>
+
+      {/* ── Main Content ──────────────────────────────────────── */}
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 relative">
+
+        {/* Top bar */}
+        <header className="flex items-center justify-between px-5 py-3.5 shrink-0">
+          <ModelPicker
+            models={models}
+            value={selectedModel}
+            onChange={setSelectedModel}
+            disabled={streaming}
+          />
+
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[13px] text-white/50 hover:text-white hover:bg-white/10 transition-colors border border-transparent hover:border-white/10"
+            aria-label="Закрыть"
+          >
+            <X size={16} />
+            <span className="hidden sm:inline">Закрыть</span>
+          </button>
+        </header>
+
+        {/* Messages or welcome screen */}
+        <div
+          ref={scrollRef}
+          className="flex-1 overflow-y-auto min-h-0"
+        >
+          {chatLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <SectionSpinner />
+            </div>
+          ) : !hasMessages ? (
+            /* ── Welcome Screen ── */
+            <div className="flex flex-col items-center justify-center h-full px-6 pb-24">
+              <h1 className="text-white text-3xl sm:text-4xl font-semibold mb-10 text-center tracking-tight">
+                С чего начнём?
+              </h1>
+
+              {/* Quick action cards */}
+              <div className="flex flex-wrap gap-3 justify-center max-w-xl">
+                <button
+                  type="button"
+                  onClick={() => handleQuickAction("Создай изображение: ")}
+                  className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl text-[13px] text-white/80 hover:text-white transition-all border border-white/10 hover:border-white/20 hover:bg-white/8 backdrop-blur-sm"
+                  style={{ background: "rgba(255,255,255,0.05)" }}
+                >
+                  <Image size={15} className="text-purple-400 shrink-0" />
+                  Создать изображение
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQuickAction("Помоги написать или отредактировать: ")}
+                  className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl text-[13px] text-white/80 hover:text-white transition-all border border-white/10 hover:border-white/20 hover:bg-white/8 backdrop-blur-sm"
+                  style={{ background: "rgba(255,255,255,0.05)" }}
+                >
+                  <PenLine size={15} className="text-emerald-400 shrink-0" />
+                  Напиши или отредактируй
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQuickAction("Найди информацию о: ")}
+                  className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl text-[13px] text-white/80 hover:text-white transition-all border border-white/10 hover:border-white/20 hover:bg-white/8 backdrop-blur-sm"
+                  style={{ background: "rgba(255,255,255,0.05)" }}
+                >
+                  <Search size={15} className="text-blue-400 shrink-0" />
+                  Найди что-то
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* ── Chat Messages ── */
+            <div className="max-w-3xl mx-auto px-4 py-6 space-y-5">
+              {messages.map((m) => (
                 <div
                   key={m.id}
                   className={[
@@ -670,13 +716,17 @@ export function GlobalAiChatWidget() {
                 >
                   <div
                     className={[
-                      "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-[13.5px] leading-relaxed shadow-sm",
+                      "max-w-[80%] rounded-2xl px-4 py-3 text-[14px] leading-relaxed",
                       m.role === "user"
-                        ? "bg-blue-600 text-white rounded-br-md"
-                        : "bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 text-zinc-800 dark:text-zinc-100 rounded-bl-md",
+                        ? "text-white rounded-br-md"
+                        : "text-white/90 rounded-bl-md",
                     ].join(" ")}
+                    style={
+                      m.role === "user"
+                        ? { background: "rgba(99,102,241,0.7)", backdropFilter: "blur(8px)" }
+                        : { background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)" }
+                    }
                   >
-                    {/* Image attachments in user bubble */}
                     {m.role === "user" &&
                       m._pendingFiles?.some((f) => f.kind === "image") && (
                         <div className="flex flex-wrap gap-1.5 mb-2">
@@ -693,7 +743,6 @@ export function GlobalAiChatWidget() {
                         </div>
                       )}
 
-                    {/* Document attachments in user bubble */}
                     {m.role === "user" &&
                       m._pendingFiles?.some((f) => f.kind === "document") && (
                         <div className="flex flex-wrap gap-1 mb-2">
@@ -711,9 +760,8 @@ export function GlobalAiChatWidget() {
                         </div>
                       )}
 
-                    {/* Message content */}
                     {m.role === "assistant" && !m.content && streaming ? (
-                      <span className="inline-flex items-center gap-1.5 text-zinc-500">
+                      <span className="inline-flex items-center gap-1.5 text-white/50">
                         <Loader2 size={13} className="animate-spin" />
                         Думаю…
                       </span>
@@ -726,36 +774,41 @@ export function GlobalAiChatWidget() {
                     ) : null}
                   </div>
                 </div>
-              ))
-            )}
+              ))}
 
-            {error && (
-              <div className="text-[12px] text-red-600 bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900 rounded-lg px-3 py-2">
-                {error}
-              </div>
-            )}
-          </div>
+              {error && (
+                <div className="text-[12px] text-red-400 bg-red-950/40 border border-red-900/50 rounded-xl px-4 py-2.5">
+                  {error}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
-          {/* Input area */}
+        {/* ── Input Area ─────────────────────────────────────── */}
+        <div className="shrink-0 px-4 pb-6 pt-2">
           <form
             onSubmit={handleSubmit}
-            className="border-t border-zinc-200 dark:border-zinc-800 px-3 py-2.5 shrink-0"
+            className="max-w-3xl mx-auto"
           >
-            {/* Pending attachments preview */}
+            {/* Pending attachments */}
             {pendingFiles.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-2">
+              <div className="flex flex-wrap gap-2 mb-3 px-1">
                 {pendingFiles.map((f) => (
                   <div key={f.fileId} className="relative group">
                     {f.kind === "image" && f.url ? (
                       <img
                         src={f.url}
                         alt={f.fileName}
-                        className="h-14 w-14 rounded-xl object-cover ring-1 ring-zinc-200 dark:ring-zinc-700"
+                        className="h-14 w-14 rounded-xl object-cover ring-1 ring-white/20"
                       />
                     ) : (
-                      <div className="h-14 px-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 ring-1 ring-zinc-200 dark:ring-zinc-700 flex items-center gap-1.5 max-w-[130px]">
-                        <FileText size={13} className="text-zinc-400 shrink-0" />
-                        <span className="text-[11px] text-zinc-600 dark:text-zinc-400 truncate">
+                      <div
+                        className="h-14 px-2 rounded-xl flex items-center gap-1.5 max-w-[130px] border border-white/10"
+                        style={{ background: "rgba(255,255,255,0.08)" }}
+                      >
+                        <FileText size={13} className="text-white/40 shrink-0" />
+                        <span className="text-[11px] text-white/60 truncate">
                           {f.fileName}
                         </span>
                       </div>
@@ -767,7 +820,7 @@ export function GlobalAiChatWidget() {
                           prev.filter((x) => x.fileId !== f.fileId),
                         )
                       }
-                      className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-zinc-900/75 dark:bg-zinc-700 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <X size={9} />
                     </button>
@@ -776,7 +829,11 @@ export function GlobalAiChatWidget() {
               </div>
             )}
 
-            <div className="flex items-end gap-2">
+            {/* Input box */}
+            <div
+              className="flex items-end gap-2 rounded-2xl px-3 py-2.5 border border-white/15 hover:border-white/25 transition-colors"
+              style={{ background: "rgba(255,255,255,0.08)", backdropFilter: "blur(12px)" }}
+            >
               <input
                 ref={fileInputRef}
                 type="file"
@@ -784,21 +841,23 @@ export function GlobalAiChatWidget() {
                 accept=".pdf,.doc,.docx,.txt,.md,.csv,.jpg,.jpeg,.png,.gif,.webp"
                 onChange={(e) => void handleFileUpload(e)}
               />
+
               <button
                 type="button"
                 disabled={uploading || streaming}
-                onClick={handleAttachClick}
-                className="shrink-0 w-8 h-8 rounded-xl border border-zinc-200 dark:border-zinc-700 text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800 flex items-center justify-center disabled:opacity-40 transition-colors"
+                onClick={() => fileInputRef.current?.click()}
+                className="shrink-0 p-1.5 rounded-lg text-white/40 hover:text-white/70 transition-colors disabled:opacity-30"
                 title="Прикрепить файл"
               >
                 {uploading ? (
-                  <Loader2 size={14} className="animate-spin" />
+                  <Loader2 size={17} className="animate-spin" />
                 ) : (
-                  <Paperclip size={14} />
+                  <Paperclip size={17} />
                 )}
               </button>
 
               <textarea
+                ref={textareaRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -810,17 +869,36 @@ export function GlobalAiChatWidget() {
                 placeholder="Напишите сообщение…"
                 rows={1}
                 disabled={streaming}
-                className="flex-1 resize-none max-h-32 min-h-[36px] rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-[13.5px] text-zinc-800 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-400/40"
+                className="flex-1 resize-none max-h-40 min-h-[28px] bg-transparent text-[14px] text-white placeholder:text-white/30 focus:outline-none leading-relaxed py-0.5"
+                style={{ scrollbarWidth: "none" }}
               />
+
+              <button
+                type="button"
+                disabled={streaming}
+                className="shrink-0 p-1.5 rounded-lg text-white/40 hover:text-white/70 transition-colors disabled:opacity-30"
+                title="Голосовой ввод"
+              >
+                <Mic size={17} />
+              </button>
 
               <button
                 type="submit"
                 disabled={!input.trim() || streaming}
-                className="shrink-0 w-8 h-8 rounded-xl bg-blue-600 text-white disabled:opacity-40 flex items-center justify-center hover:bg-blue-700 transition-colors"
+                className="shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all disabled:opacity-30"
+                style={{
+                  background: input.trim() && !streaming
+                    ? "linear-gradient(135deg, #6366f1, #8b5cf6)"
+                    : "rgba(255,255,255,0.15)",
+                }}
               >
-                <Send size={14} />
+                <Send size={14} className="text-white" />
               </button>
             </div>
+
+            <p className="text-center text-[11px] text-white/20 mt-2.5">
+              ИИ может допускать ошибки. Проверяйте важную информацию.
+            </p>
           </form>
         </div>
       </div>
