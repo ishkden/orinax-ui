@@ -17,6 +17,8 @@ import {
   Trash2,
   MessageSquare,
   FileText,
+  ChevronDown,
+  Check,
 } from "lucide-react";
 
 const ANALYTICS_HOSTS = new Set([
@@ -107,6 +109,80 @@ function renderMarkdown(text: string): string {
     )
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/\n/g, "<br/>");
+}
+
+function ModelPicker({
+  models,
+  value,
+  onChange,
+  disabled,
+}: {
+  models: ModelOption[];
+  value: string;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+}) {
+  const [dropOpen, setDropOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const current = models.find((m) => m.id === value);
+
+  useEffect(() => {
+    if (!dropOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setDropOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [dropOpen]);
+
+  return (
+    <div ref={ref} className="relative shrink-0">
+      <button
+        type="button"
+        disabled={disabled || models.length === 0}
+        onClick={() => setDropOpen((p) => !p)}
+        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-[12px] text-zinc-700 dark:text-zinc-300 hover:border-zinc-300 dark:hover:border-zinc-600 transition-colors max-w-[200px] disabled:opacity-40"
+      >
+        <span className="truncate max-w-[150px]">
+          {models.length === 0 ? "Загрузка…" : (current?.label ?? "Модель")}
+        </span>
+        <ChevronDown
+          size={12}
+          className={[
+            "shrink-0 text-zinc-400 transition-transform",
+            dropOpen ? "rotate-180" : "",
+          ].join(" ")}
+        />
+      </button>
+
+      {dropOpen && models.length > 0 && (
+        <div className="absolute right-0 top-full mt-1.5 w-56 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-xl z-50 overflow-hidden">
+          <div className="py-1 max-h-64 overflow-y-auto">
+            {models.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => { onChange(m.id); setDropOpen(false); }}
+                className={[
+                  "w-full flex items-center justify-between gap-2 px-3 py-2 text-[13px] text-left transition-colors",
+                  m.id === value
+                    ? "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300"
+                    : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800",
+                ].join(" ")}
+              >
+                <span className="truncate">{m.label}</span>
+                {m.id === value && (
+                  <Check size={13} className="shrink-0 text-blue-500" />
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function GlobalAiChatWidget() {
@@ -519,22 +595,12 @@ export function GlobalAiChatWidget() {
           {/* Header */}
           <header className="flex items-center gap-2 px-3 py-2 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
             <div className="flex-1" />
-            <select
+            <ModelPicker
+              models={models}
               value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value)}
-              className="text-xs rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1.5 max-w-[200px] shrink-0 text-zinc-700 dark:text-zinc-300"
-              disabled={streaming || models.length === 0}
-            >
-              {models.length === 0 ? (
-                <option value="">Загрузка…</option>
-              ) : (
-                models.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.label}
-                  </option>
-                ))
-              )}
-            </select>
+              onChange={setSelectedModel}
+              disabled={streaming}
+            />
 
             {/* Context mini-bar */}
             <div className="hidden sm:flex items-center gap-1.5 shrink-0">
