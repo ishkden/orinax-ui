@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { useSession, signOut } from "next-auth/react";
-import { ChevronDown, LogOut, Settings, BarChart3, Users, Plug, HelpCircle, Megaphone } from "lucide-react";
+import { ChevronDown, LogOut, Settings, BarChart3, Users, Plug, HelpCircle, Megaphone, Sparkles } from "lucide-react";
 
 function ThemeToggle() {
   const [isDark, setIsDark] = useState(true);
@@ -219,6 +219,19 @@ export function GlobalHeader({ onLogout, activeService }: GlobalHeaderProps = {}
         </nav>
 
         <div className="flex-1" />
+
+        <button
+          type="button"
+          onClick={() => {
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new Event("orinax:open-ai-chat"));
+            }
+          }}
+          title="AI-чат — беседа с моделями OpenRouter"
+          className="p-1.5 rounded-md text-gray-400 dark:text-[#71717a] hover:text-violet-600 dark:hover:text-violet-400 hover:bg-gray-100 dark:hover:bg-[#27272a] transition-colors duration-200 shrink-0"
+        >
+          <Sparkles size={16} strokeWidth={1.75} />
+        </button>
 
         <ThemeToggle />
 
