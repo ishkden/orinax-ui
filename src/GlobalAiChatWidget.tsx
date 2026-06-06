@@ -14,7 +14,6 @@ import {
   Send,
   Paperclip,
   Loader2,
-  Sparkles,
   Trash2,
   MessageSquare,
 } from "lucide-react";
@@ -112,7 +111,6 @@ export function GlobalAiChatWidget() {
   const [chatLoading, setChatLoading] = useState(false);
   const [models, setModels] = useState<ModelOption[]>([]);
   const [selectedModel, setSelectedModel] = useState("");
-  const [balance, setBalance] = useState<number | null>(null);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [contextUsed, setContextUsed] = useState(0);
@@ -141,24 +139,22 @@ export function GlobalAiChatWidget() {
   }, [open]);
 
   const loadModels = useCallback(async () => {
-    const res = await fetch(apiUrl(`/api/ai-models?module=${MODULE}`), {
-      credentials: "include",
-    });
-    if (!res.ok) return;
-    const data = (await res.json()) as { models: ModelOption[] };
-    setModels(data.models ?? []);
-    if (data.models?.[0] && !selectedModel) {
-      setSelectedModel(data.models[0].id);
+    try {
+      const res = await fetch(apiUrl(`/api/ai-models?module=${MODULE}`), {
+        credentials: "include",
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as { models: ModelOption[] };
+      const list = data.models ?? [];
+      setModels(list);
+      if (list.length > 0) {
+        setSelectedModel((prev) =>
+          prev && list.some((m) => m.id === prev) ? prev : list[0].id,
+        );
+      }
+    } catch {
+      /* cross-origin or network */
     }
-  }, [selectedModel]);
-
-  const loadBalance = useCallback(async () => {
-    const res = await fetch(apiUrl("/api/global-ai-chat/balance"), {
-      credentials: "include",
-    });
-    if (!res.ok) return;
-    const data = (await res.json()) as { balance: number };
-    setBalance(data.balance);
   }, []);
 
   const loadSessions = useCallback(async () => {
@@ -206,9 +202,8 @@ export function GlobalAiChatWidget() {
   useEffect(() => {
     if (!open) return;
     void loadModels();
-    void loadBalance();
     void loadSessions();
-  }, [open, loadModels, loadBalance, loadSessions]);
+  }, [open, loadModels, loadSessions]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -248,17 +243,38 @@ export function GlobalAiChatWidget() {
     }
   };
 
+  const ensureSession = async (): Promise<string | null> => {
+    if (activeId) return activeId;
+    const res = await fetch(apiUrl("/api/global-ai-chat/sessions"), {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: selectedModel || undefined }),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { session: ChatSession };
+    setSessions((prev) => [data.session, ...prev]);
+    setActiveId(data.session.id);
+    if (data.session.model) setSelectedModel(data.session.model);
+    return data.session.id;
+  };
+
   const handleFileUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (!file || !activeId) return;
+    if (!file) return;
 
     setUploading(true);
     setError(null);
     try {
+      const sessionId = await ensureSession();
+      if (!sessionId) {
+        setError("Не удалось создать чат");
+        return;
+      }
       const form = new FormData();
       form.append("file", file);
-      const res = await fetch(apiUrl(`/api/global-ai-chat/sessions/${activeId}/files`), {
+      const res = await fetch(apiUrl(`/api/global-ai-chat/sessions/${sessionId}/files`), {
         method: "POST",
         credentials: "include",
         body: form,
@@ -274,10 +290,19 @@ export function GlobalAiChatWidget() {
           setPendingAttachments((prev) => [...prev, data.file!.id]);
         }
       }
-      await loadSession(activeId);
+      await loadSession(sessionId);
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleAttachClick = () => {
+    void (async () => {
+      if (!selectedModel && models.length > 0) {
+        setSelectedModel(models[0].id);
+      }
+      fileInputRef.current?.click();
+    })();
   };
 
   const sendMessage = async (text: string) => {
@@ -391,7 +416,6 @@ export function GlobalAiChatWidget() {
               setError(String(payload.error ?? "stream_error"));
             } else if (event === "done") {
               void loadSessions();
-              void loadBalance();
             }
           } catch {
             /* ignore parse errors */
@@ -427,9 +451,9 @@ export function GlobalAiChatWidget() {
         aria-label="Закрыть"
         onClick={() => setOpen(false)}
       />
-      <div className="relative w-full max-w-[1100px] h-[min(88vh,820px)] bg-white dark:bg-[#18181b] rounded-2xl shadow-2xl ring-1 ring-zinc-200 dark:ring-zinc-800 flex overflow-hidden">
+      <div className="relative w-full max-w-[1100px] h-[min(88vh,820px)] bg-white dark:bg-[#18181b] rounded-2xl shadow-2xl ring-1 ring-zinc-200 dark:ring-zinc-800 flex min-h-0">
         {/* Sidebar */}
-        <aside className="hidden sm:flex w-[260px] shrink-0 flex-col border-r border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-[#111113]">
+        <aside className="hidden sm:flex w-[260px] shrink-0 flex-col border-r border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-[#111113] min-h-0 overflow-hidden">
           <div className="p-3 border-b border-zinc-200 dark:border-zinc-800">
             <button
               type="button"
@@ -486,54 +510,48 @@ export function GlobalAiChatWidget() {
         </aside>
 
         {/* Main */}
-        <div className="flex-1 flex flex-col min-w-0">
-          <header className="flex items-center gap-3 px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-blue-600 flex items-center justify-center shrink-0">
-              <Sparkles size={16} className="text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50 truncate">AI Чат</p>
-              <p className="text-[11px] text-zinc-500 truncate">
-                {balance != null ? `${balance.toLocaleString("ru-RU")} Credits` : "…"}
-                {" · "}
-                контекст {contextPct}%
-              </p>
-            </div>
+        <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
+          <header className="flex items-center gap-2 px-4 py-2.5 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
             <select
               value={selectedModel}
               onChange={(e) => setSelectedModel(e.target.value)}
-              className="text-xs rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1.5 max-w-[180px] truncate"
-              disabled={streaming}
+              className="flex-1 min-w-0 text-sm rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2.5 py-2 truncate"
+              disabled={streaming || models.length === 0}
             >
-              {models.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.label}
-                </option>
-              ))}
+              {models.length === 0 ? (
+                <option value="">Загрузка моделей…</option>
+              ) : (
+                models.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.label}
+                  </option>
+                ))
+              )}
             </select>
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="p-1.5 rounded-md text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              className="p-1.5 rounded-md text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 shrink-0"
+              aria-label="Закрыть"
             >
               <X size={18} />
             </button>
           </header>
 
           {/* Context bar */}
-          <div className="px-4 py-1.5 border-b border-zinc-100 dark:border-zinc-800 shrink-0">
-            <div className="h-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
+          <div className="px-4 py-1.5 border-b border-zinc-100 dark:border-zinc-800 shrink-0 flex items-center gap-2">
+            <div className="flex-1 h-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
               <div
                 className={[
                   "h-full rounded-full transition-all",
-                  contextPct > 85 ? "bg-amber-500" : "bg-violet-500",
+                  contextPct > 85 ? "bg-amber-500" : "bg-blue-500",
                 ].join(" ")}
-                style={{ width: `${contextPct}%` }}
+                style={{ width: `${Math.max(contextPct, 1)}%` }}
               />
             </div>
-            <p className="text-[10px] text-zinc-400 mt-1">
-              ~{contextUsed.toLocaleString("ru-RU")} / {contextMax.toLocaleString("ru-RU")} токенов
-            </p>
+            <span className="text-[11px] text-zinc-500 tabular-nums shrink-0 w-8 text-right">
+              {contextPct}%
+            </span>
           </div>
 
           <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
@@ -607,8 +625,8 @@ export function GlobalAiChatWidget() {
               />
               <button
                 type="button"
-                disabled={!activeId || uploading}
-                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading || streaming}
+                onClick={handleAttachClick}
                 className="shrink-0 w-9 h-9 rounded-xl border border-zinc-200 dark:border-zinc-700 text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800 flex items-center justify-center disabled:opacity-40"
                 title="Прикрепить файл"
               >
