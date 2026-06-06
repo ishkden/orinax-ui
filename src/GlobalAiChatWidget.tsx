@@ -207,7 +207,12 @@ export function GlobalAiChatWidget() {
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    const openHandler = () => setOpen(true);
+    const openHandler = () => {
+      // #region agent log
+      fetch('http://127.0.0.1:7835/ingest/7c901cfb-a630-4609-920a-02b605d84df8',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'08c22e'},body:JSON.stringify({sessionId:'08c22e',location:'GlobalAiChatWidget.tsx:openHandler',message:'AI chat opening',data:{hasDark:document.documentElement.classList.contains("dark"),htmlClasses:document.documentElement.className,host:window.location.hostname},runId:'run1',hypothesisId:'H-A,H-B',timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
+      setOpen(true);
+    };
     window.addEventListener("orinax:open-ai-chat", openHandler);
     return () => window.removeEventListener("orinax:open-ai-chat", openHandler);
   }, []);
@@ -222,10 +227,17 @@ export function GlobalAiChatWidget() {
   }, [open]);
 
   const loadModels = useCallback(async () => {
+    // #region agent log
+    const apiBase = getApiBase();
+    const modelsUrl = apiUrl(`/api/ai-models?module=${MODULE}`);
+    // #endregion
     try {
-      const res = await fetch(apiUrl(`/api/ai-models?module=${MODULE}`), {
+      const res = await fetch(modelsUrl, {
         credentials: "include",
       });
+      // #region agent log
+      fetch('http://127.0.0.1:7835/ingest/7c901cfb-a630-4609-920a-02b605d84df8',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'08c22e'},body:JSON.stringify({sessionId:'08c22e',location:'GlobalAiChatWidget.tsx:loadModels',message:'models API response',data:{apiBase,modelsUrl,status:res.status,ok:res.ok,host:typeof window!=='undefined'?window.location.hostname:''},runId:'run1',hypothesisId:'H-C',timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       if (!res.ok) return;
       const data = (await res.json()) as { models: ModelOption[] };
       const list = data.models ?? [];
@@ -235,8 +247,10 @@ export function GlobalAiChatWidget() {
           prev && list.some((m) => m.id === prev) ? prev : list[0].id,
         );
       }
-    } catch {
-      /* cross-origin or network error */
+    } catch (err) {
+      // #region agent log
+      fetch('http://127.0.0.1:7835/ingest/7c901cfb-a630-4609-920a-02b605d84df8',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'08c22e'},body:JSON.stringify({sessionId:'08c22e',location:'GlobalAiChatWidget.tsx:loadModels:catch',message:'models API error',data:{apiBase,modelsUrl,error:String(err)},runId:'run1',hypothesisId:'H-C',timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
     }
   }, []);
 
@@ -246,10 +260,16 @@ export function GlobalAiChatWidget() {
       const res = await fetch(apiUrl("/api/global-ai-chat/sessions"), {
         credentials: "include",
       });
+      // #region agent log
+      fetch('http://127.0.0.1:7835/ingest/7c901cfb-a630-4609-920a-02b605d84df8',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'08c22e'},body:JSON.stringify({sessionId:'08c22e',location:'GlobalAiChatWidget.tsx:loadSessions',message:'sessions API response',data:{status:res.status,ok:res.ok,host:typeof window!=='undefined'?window.location.hostname:''},runId:'run1',hypothesisId:'H-C',timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       if (!res.ok) throw new Error("load_sessions_failed");
       const data = (await res.json()) as { sessions: ChatSession[] };
       setSessions(data.sessions ?? []);
-    } catch {
+    } catch (err) {
+      // #region agent log
+      fetch('http://127.0.0.1:7835/ingest/7c901cfb-a630-4609-920a-02b605d84df8',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'08c22e'},body:JSON.stringify({sessionId:'08c22e',location:'GlobalAiChatWidget.tsx:loadSessions:catch',message:'sessions API error',data:{error:String(err),host:typeof window!=='undefined'?window.location.hostname:''},runId:'run1',hypothesisId:'H-C',timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       setError("Не удалось загрузить чаты");
     } finally {
       setSessionsLoading(false);
