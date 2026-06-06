@@ -201,6 +201,12 @@ export function GlobalAiChatWidget() {
 
   useEffect(() => {
     if (!open) return;
+    setActiveId(null);
+    setMessages([]);
+    setFiles([]);
+    setPendingAttachments([]);
+    setError(null);
+    setContextUsed(0);
     void loadModels();
     void loadSessions();
   }, [open, loadModels, loadSessions]);
