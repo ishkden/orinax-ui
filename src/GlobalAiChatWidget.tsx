@@ -19,10 +19,9 @@ import {
   FileText,
   ChevronDown,
   Check,
-  Mic,
   Image,
-  PenLine,
-  Search,
+  FileSpreadsheet,
+  File,
 } from "lucide-react";
 
 const ANALYTICS_HOSTS = new Set([
@@ -33,6 +32,29 @@ const ANALYTICS_HOSTS = new Set([
 ]);
 
 const MODULE = "global-ai-chat";
+
+const SUGGESTION_POOL = [
+  "Помоги составить коммерческое предложение для нового клиента",
+  "Напиши скрипт для первого звонка потенциальному клиенту",
+  "Как грамотно отказать клиенту, сохранив отношения?",
+  "Составь список вопросов для первичной встречи с клиентом",
+  "Напиши письмо-напоминание по просроченной задаче",
+  "Помоги сформулировать ценностное предложение продукта",
+  "Проанализируй ситуацию и предложи план действий",
+  "Как улучшить конверсию на этапе воронки продаж?",
+  "Напиши краткое резюме по итогам переговоров",
+  "Составь план онбординга нового сотрудника",
+  "Что важно учесть при заключении договора с подрядчиком?",
+  "Помоги описать бизнес-процесс для регламента",
+  "Напиши ответ на негативный отзыв клиента",
+  "Составь структуру презентации для инвестора",
+  "Как правильно поставить задачу сотруднику?",
+];
+
+function getRandomSuggestions(count = 3): string[] {
+  const shuffled = [...SUGGESTION_POOL].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count);
+}
 
 interface ChatSession {
   id: string;
@@ -74,11 +96,12 @@ function apiUrl(path: string): string {
   return `${getApiBase()}${path}`;
 }
 
-function SectionSpinner() {
+function SectionSpinner({ dark }: { dark: boolean }) {
   return (
     <div className="flex items-center justify-center py-16">
       <svg
-        className="animate-spin text-zinc-500"
+        className="animate-spin"
+        style={{ color: dark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.2)" }}
         width="22"
         height="22"
         viewBox="0 0 24 24"
@@ -96,20 +119,20 @@ function SectionSpinner() {
   );
 }
 
-function renderMarkdown(text: string): string {
+function renderMarkdown(text: string, dark: boolean): string {
   const escaped = text
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
+  const pre = dark
+    ? "my-2 p-3 rounded-xl bg-black/30 text-xs overflow-x-auto border border-white/10"
+    : "my-2 p-3 rounded-xl bg-black/5 text-xs overflow-x-auto border border-black/10";
+  const code = dark
+    ? "px-1 py-0.5 rounded bg-black/30 text-xs border border-white/10"
+    : "px-1 py-0.5 rounded bg-black/5 text-xs border border-black/10";
   return escaped
-    .replace(
-      /```([\s\S]*?)```/g,
-      '<pre class="my-2 p-3 rounded-xl bg-black/30 text-xs overflow-x-auto border border-white/10"><code>$1</code></pre>',
-    )
-    .replace(
-      /`([^`]+)`/g,
-      '<code class="px-1 py-0.5 rounded bg-black/30 text-xs border border-white/10">$1</code>',
-    )
+    .replace(/```([\s\S]*?)```/g, `<pre class="${pre}"><code>$1</code></pre>`)
+    .replace(/`([^`]+)`/g, `<code class="${code}">$1</code>`)
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/\n/g, "<br/>");
 }
@@ -119,11 +142,13 @@ function ModelPicker({
   value,
   onChange,
   disabled,
+  dark,
 }: {
   models: ModelOption[];
   value: string;
   onChange: (v: string) => void;
   disabled?: boolean;
+  dark: boolean;
 }) {
   const [dropOpen, setDropOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -140,45 +165,76 @@ function ModelPicker({
     return () => document.removeEventListener("mousedown", handler);
   }, [dropOpen]);
 
+  const btnStyle = dark
+    ? {
+        background: "rgba(255,255,255,0.08)",
+        border: "1px solid rgba(255,255,255,0.12)",
+        color: "rgba(255,255,255,0.75)",
+      }
+    : {
+        background: "rgba(0,0,0,0.04)",
+        border: "1px solid rgba(0,0,0,0.12)",
+        color: "rgba(0,0,0,0.6)",
+      };
+
+  const dropStyle = dark
+    ? { background: "#1a1f2e", border: "1px solid rgba(255,255,255,0.1)" }
+    : { background: "#ffffff", border: "1px solid rgba(0,0,0,0.1)" };
+
   return (
     <div ref={ref} className="relative shrink-0">
       <button
         type="button"
         disabled={disabled || models.length === 0}
         onClick={() => setDropOpen((p) => !p)}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-[13px] text-white/80 hover:text-white transition-colors disabled:opacity-40 border border-white/10"
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[13px] transition-colors disabled:opacity-40"
+        style={btnStyle}
       >
         <span className="truncate max-w-[180px]">
           {models.length === 0 ? "Загрузка…" : (current?.label ?? "Модель")}
         </span>
         <ChevronDown
           size={13}
-          className={[
-            "shrink-0 text-white/50 transition-transform",
-            dropOpen ? "rotate-180" : "",
-          ].join(" ")}
+          className={["shrink-0 transition-transform", dropOpen ? "rotate-180" : ""].join(" ")}
+          style={{ opacity: 0.5 }}
         />
       </button>
 
       {dropOpen && models.length > 0 && (
-        <div className="absolute left-0 top-full mt-2 w-64 rounded-2xl border border-white/10 bg-[#1a1a2e]/95 backdrop-blur-xl shadow-2xl z-50 overflow-hidden">
+        <div
+          className="absolute left-0 top-full mt-2 w-64 rounded-2xl shadow-2xl z-50 overflow-hidden"
+          style={dropStyle}
+        >
           <div className="py-1.5 max-h-72 overflow-y-auto">
             {models.map((m) => (
               <button
                 key={m.id}
                 type="button"
                 onClick={() => { onChange(m.id); setDropOpen(false); }}
-                className={[
-                  "w-full flex items-center justify-between gap-2 px-4 py-2.5 text-[13px] text-left transition-colors",
-                  m.id === value
-                    ? "text-white bg-white/10"
-                    : "text-white/70 hover:text-white hover:bg-white/5",
-                ].join(" ")}
+                className="w-full flex items-center justify-between gap-2 px-4 py-2.5 text-[13px] text-left transition-colors"
+                style={{
+                  color: m.id === value
+                    ? "#2563eb"
+                    : dark ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.7)",
+                  background: m.id === value
+                    ? dark ? "rgba(37,99,235,0.12)" : "rgba(37,99,235,0.06)"
+                    : "transparent",
+                }}
+                onMouseEnter={(e) => {
+                  if (m.id !== value) {
+                    (e.currentTarget as HTMLButtonElement).style.background = dark
+                      ? "rgba(255,255,255,0.06)"
+                      : "rgba(0,0,0,0.04)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (m.id !== value) {
+                    (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                  }
+                }}
               >
                 <span className="truncate">{m.label}</span>
-                {m.id === value && (
-                  <Check size={13} className="shrink-0 text-blue-400" />
-                )}
+                {m.id === value && <Check size={13} className="shrink-0 text-blue-600" />}
               </button>
             ))}
           </div>
@@ -188,8 +244,44 @@ function ModelPicker({
   );
 }
 
+const ATTACH_OPTIONS = [
+  {
+    id: "photo",
+    label: "Фото и изображения",
+    ext: "jpg, jpeg, png, gif, webp",
+    accept: ".jpg,.jpeg,.png,.gif,.webp",
+    icon: Image,
+    color: "#2563eb",
+  },
+  {
+    id: "doc",
+    label: "Документы",
+    ext: "pdf, doc, docx, txt, md",
+    accept: ".pdf,.doc,.docx,.txt,.md",
+    icon: FileText,
+    color: "#16a34a",
+  },
+  {
+    id: "table",
+    label: "Таблицы",
+    ext: "csv",
+    accept: ".csv",
+    icon: FileSpreadsheet,
+    color: "#d97706",
+  },
+  {
+    id: "other",
+    label: "Другие файлы",
+    ext: "любой формат",
+    accept: "*",
+    icon: File,
+    color: "#6b7280",
+  },
+];
+
 export function GlobalAiChatWidget() {
   const [open, setOpen] = useState(false);
+  const [isDark, setIsDark] = useState(false);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -202,11 +294,25 @@ export function GlobalAiChatWidget() {
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [attachMenuOpen, setAttachMenuOpen] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputAcceptRef = useRef<string>("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const attachMenuRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Track dark mode from HTML class
+  useEffect(() => {
+    const update = () =>
+      setIsDark(document.documentElement.classList.contains("dark"));
+    update();
+    const obs = new MutationObserver(update);
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => obs.disconnect();
+  }, []);
 
   useEffect(() => {
     const openHandler = () => setOpen(true);
@@ -223,7 +329,6 @@ export function GlobalAiChatWidget() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
-  // Prevent body scroll when open
   useEffect(() => {
     if (open) {
       document.body.style.overflow = "hidden";
@@ -232,6 +337,18 @@ export function GlobalAiChatWidget() {
     }
     return () => { document.body.style.overflow = ""; };
   }, [open]);
+
+  // Close attach menu on outside click
+  useEffect(() => {
+    if (!attachMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (attachMenuRef.current && !attachMenuRef.current.contains(e.target as Node)) {
+        setAttachMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [attachMenuOpen]);
 
   const loadModels = useCallback(async () => {
     try {
@@ -247,9 +364,7 @@ export function GlobalAiChatWidget() {
           prev && list.some((m) => m.id === prev) ? prev : list[0].id,
         );
       }
-    } catch {
-      /* cross-origin or network error */
-    }
+    } catch { /* ignore */ }
   }, []);
 
   const loadSessions = useCallback(async () => {
@@ -258,7 +373,7 @@ export function GlobalAiChatWidget() {
       const res = await fetch(apiUrl("/api/global-ai-chat/sessions"), {
         credentials: "include",
       });
-      if (!res.ok) throw new Error("load_sessions_failed");
+      if (!res.ok) throw new Error();
       const data = (await res.json()) as { sessions: ChatSession[] };
       setSessions(data.sessions ?? []);
     } catch {
@@ -275,7 +390,7 @@ export function GlobalAiChatWidget() {
       const res = await fetch(apiUrl(`/api/global-ai-chat/sessions/${id}`), {
         credentials: "include",
       });
-      if (!res.ok) throw new Error("load_session_failed");
+      if (!res.ok) throw new Error();
       const data = (await res.json()) as {
         session: ChatSession;
         messages: ChatMessage[];
@@ -297,6 +412,7 @@ export function GlobalAiChatWidget() {
     setMessages([]);
     setPendingFiles([]);
     setError(null);
+    setSuggestions(getRandomSuggestions(3));
     void loadModels();
     void loadSessions();
   }, [open, loadModels, loadSessions]);
@@ -322,6 +438,7 @@ export function GlobalAiChatWidget() {
     setActiveId(data.session.id);
     setMessages([]);
     setPendingFiles([]);
+    setSuggestions(getRandomSuggestions(3));
     if (data.session.model) setSelectedModel(data.session.model);
   };
 
@@ -335,6 +452,7 @@ export function GlobalAiChatWidget() {
       setActiveId(null);
       setMessages([]);
       setPendingFiles([]);
+      setSuggestions(getRandomSuggestions(3));
     }
   };
 
@@ -389,6 +507,15 @@ export function GlobalAiChatWidget() {
       }
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleAttachSelect = (accept: string) => {
+    fileInputAcceptRef.current = accept;
+    setAttachMenuOpen(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.accept = accept;
+      fileInputRef.current.click();
     }
   };
 
@@ -517,73 +644,86 @@ export function GlobalAiChatWidget() {
     void sendMessage(input);
   };
 
-  const handleQuickAction = (text: string) => {
-    setInput(text);
-    setTimeout(() => textareaRef.current?.focus(), 0);
-  };
-
   if (!open) return null;
 
-  const hasMessages = messages.length > 0;
+  // Theme-based colors
+  const bg = isDark ? "#080b14" : "#f8fafc";
+  const sidebarBg = isDark ? "rgba(0,0,0,0.35)" : "rgba(0,0,0,0.03)";
+  const sidebarBorder = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.08)";
+  const textPrimary = isDark ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.85)";
+  const textSecondary = isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.4)";
+  const textMuted = isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.25)";
+  const borderColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
+  const hoverBg = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)";
+  const inputBg = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)";
+  const inputBorder = isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)";
+  const msgUserBg = "#2563eb";
+  const msgAiBg = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.04)";
+  const msgAiBorder = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)";
+  const suggestionBg = isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)";
+  const suggestionBorder = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)";
+  const dropdownBg = isDark ? "#1a1f2e" : "#ffffff";
 
   return (
     <div
       className="fixed inset-0 z-[9999] flex"
-      style={{
-        background: "radial-gradient(ellipse at 20% 50%, #1a1a3e 0%, #0d0d1a 40%, #050508 100%)",
-      }}
+      style={{ background: bg }}
     >
-      {/* Star particles */}
-      <div
-        className="absolute inset-0 pointer-events-none overflow-hidden"
-        aria-hidden="true"
-        style={{
-          backgroundImage: `
-            radial-gradient(1px 1px at 10% 15%, rgba(255,255,255,0.35) 0%, transparent 100%),
-            radial-gradient(1px 1px at 25% 40%, rgba(255,255,255,0.2) 0%, transparent 100%),
-            radial-gradient(1.5px 1.5px at 40% 10%, rgba(255,255,255,0.3) 0%, transparent 100%),
-            radial-gradient(1px 1px at 55% 70%, rgba(255,255,255,0.25) 0%, transparent 100%),
-            radial-gradient(1px 1px at 65% 25%, rgba(255,255,255,0.2) 0%, transparent 100%),
-            radial-gradient(1.5px 1.5px at 75% 55%, rgba(255,255,255,0.3) 0%, transparent 100%),
-            radial-gradient(1px 1px at 85% 15%, rgba(255,255,255,0.25) 0%, transparent 100%),
-            radial-gradient(1px 1px at 90% 80%, rgba(255,255,255,0.2) 0%, transparent 100%),
-            radial-gradient(1px 1px at 15% 85%, rgba(255,255,255,0.3) 0%, transparent 100%),
-            radial-gradient(1.5px 1.5px at 35% 60%, rgba(255,255,255,0.15) 0%, transparent 100%),
-            radial-gradient(1px 1px at 50% 90%, rgba(255,255,255,0.25) 0%, transparent 100%),
-            radial-gradient(1px 1px at 70% 45%, rgba(255,255,255,0.2) 0%, transparent 100%),
-            radial-gradient(1px 1px at 80% 35%, rgba(255,255,255,0.3) 0%, transparent 100%),
-            radial-gradient(1.5px 1.5px at 5% 55%, rgba(255,255,255,0.2) 0%, transparent 100%),
-            radial-gradient(1px 1px at 95% 45%, rgba(255,255,255,0.25) 0%, transparent 100%)
-          `,
-        }}
-      />
+      {/* Stars — dark mode only */}
+      {isDark && (
+        <div
+          className="absolute inset-0 pointer-events-none overflow-hidden"
+          aria-hidden="true"
+          style={{
+            backgroundImage: `
+              radial-gradient(1px 1px at 8% 12%, rgba(255,255,255,0.4) 0%, transparent 100%),
+              radial-gradient(1px 1px at 22% 38%, rgba(255,255,255,0.25) 0%, transparent 100%),
+              radial-gradient(1.5px 1.5px at 38% 8%, rgba(255,255,255,0.35) 0%, transparent 100%),
+              radial-gradient(1px 1px at 52% 68%, rgba(255,255,255,0.3) 0%, transparent 100%),
+              radial-gradient(1px 1px at 63% 22%, rgba(255,255,255,0.25) 0%, transparent 100%),
+              radial-gradient(1.5px 1.5px at 74% 52%, rgba(255,255,255,0.35) 0%, transparent 100%),
+              radial-gradient(1px 1px at 84% 14%, rgba(255,255,255,0.3) 0%, transparent 100%),
+              radial-gradient(1px 1px at 91% 78%, rgba(255,255,255,0.25) 0%, transparent 100%),
+              radial-gradient(1px 1px at 14% 83%, rgba(255,255,255,0.35) 0%, transparent 100%),
+              radial-gradient(1.5px 1.5px at 33% 58%, rgba(255,255,255,0.2) 0%, transparent 100%),
+              radial-gradient(1px 1px at 48% 92%, rgba(255,255,255,0.3) 0%, transparent 100%),
+              radial-gradient(1px 1px at 67% 43%, rgba(255,255,255,0.25) 0%, transparent 100%),
+              radial-gradient(1px 1px at 79% 33%, rgba(255,255,255,0.35) 0%, transparent 100%),
+              radial-gradient(1px 1px at 4% 52%, rgba(255,255,255,0.25) 0%, transparent 100%),
+              radial-gradient(1px 1px at 96% 42%, rgba(255,255,255,0.3) 0%, transparent 100%),
+              radial-gradient(2px 2px at 17% 27%, rgba(37,99,235,0.3) 0%, transparent 100%),
+              radial-gradient(2px 2px at 58% 15%, rgba(37,99,235,0.2) 0%, transparent 100%),
+              radial-gradient(2px 2px at 88% 62%, rgba(37,99,235,0.25) 0%, transparent 100%)
+            `,
+          }}
+        />
+      )}
 
-      {/* ── Left Sidebar ─────────────────────────────────────── */}
+      {/* ── Sidebar ───────────────────────────────────────────── */}
       <aside
-        className="hidden sm:flex w-[260px] shrink-0 flex-col border-r min-h-0"
+        className="hidden sm:flex w-[240px] shrink-0 flex-col min-h-0"
         style={{
-          borderColor: "rgba(255,255,255,0.08)",
-          background: "rgba(0,0,0,0.3)",
+          background: sidebarBg,
+          borderRight: `1px solid ${sidebarBorder}`,
         }}
       >
-        {/* Sidebar header */}
-        <div className="px-4 pt-5 pb-3">
-          <div className="flex items-center gap-2 mb-4">
-            <div
-              className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-              style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}
-            >
-              <MessageSquare size={14} className="text-white" />
-            </div>
-            <span className="text-white font-semibold text-[15px]">Orinax AI</span>
-          </div>
-
+        {/* New chat button */}
+        <div className="px-3 pt-4 pb-2">
           <button
             type="button"
             onClick={() => void createSession()}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] text-white/70 hover:text-white hover:bg-white/10 transition-colors border border-white/10 hover:border-white/20"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] transition-colors w-full"
+            style={{ color: textSecondary }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = hoverBg;
+              (e.currentTarget as HTMLButtonElement).style.color = textPrimary;
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+              (e.currentTarget as HTMLButtonElement).style.color = textSecondary;
+            }}
           >
-            <Plus size={14} />
+            <Plus size={13} strokeWidth={2.5} />
             Новый чат
           </button>
         </div>
@@ -591,31 +731,40 @@ export function GlobalAiChatWidget() {
         {/* Chat list */}
         <div className="flex-1 overflow-y-auto px-2 pb-3 min-h-0 space-y-px">
           {sessionsLoading ? (
-            <SectionSpinner />
+            <SectionSpinner dark={isDark} />
           ) : sessions.length === 0 ? (
-            <p className="text-xs text-white/30 px-3 py-6 text-center">Нет чатов</p>
+            <p className="text-xs px-3 py-6 text-center" style={{ color: textMuted }}>
+              Нет чатов
+            </p>
           ) : (
             sessions.map((s) => (
               <div
                 key={s.id}
-                className={[
-                  "group flex items-center gap-1 rounded-xl px-2 py-2 cursor-pointer transition-colors",
-                  activeId === s.id
-                    ? "bg-white/15"
-                    : "hover:bg-white/8",
-                ].join(" ")}
-                style={activeId !== s.id ? {} : {}}
+                className="group flex items-center gap-1 rounded-lg px-2 py-1.5 cursor-pointer transition-colors"
+                style={{
+                  background: activeId === s.id ? hoverBg : "transparent",
+                }}
+                onMouseEnter={(e) => {
+                  if (activeId !== s.id) {
+                    (e.currentTarget as HTMLDivElement).style.background = hoverBg;
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (activeId !== s.id) {
+                    (e.currentTarget as HTMLDivElement).style.background = "transparent";
+                  }
+                }}
               >
                 <button
                   type="button"
                   className="flex-1 min-w-0 text-left flex items-center gap-2"
                   onClick={() => void loadSession(s.id)}
                 >
-                  <MessageSquare
-                    size={12}
-                    className="text-white/40 shrink-0"
-                  />
-                  <span className="text-[12.5px] text-white/75 truncate leading-tight">
+                  <MessageSquare size={11} style={{ color: textMuted, flexShrink: 0 }} />
+                  <span
+                    className="text-[12.5px] truncate leading-tight"
+                    style={{ color: textSecondary }}
+                  >
                     {s.title}
                   </span>
                 </button>
@@ -623,9 +772,16 @@ export function GlobalAiChatWidget() {
                   type="button"
                   title="Удалить"
                   onClick={() => void deleteSession(s.id)}
-                  className="opacity-0 group-hover:opacity-100 p-1 text-white/30 hover:text-red-400 transition-all shrink-0"
+                  className="opacity-0 group-hover:opacity-100 p-1 transition-all shrink-0"
+                  style={{ color: textMuted }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.color = "#ef4444";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.color = textMuted;
+                  }}
                 >
-                  <Trash2 size={12} />
+                  <Trash2 size={11} />
                 </button>
               </div>
             ))
@@ -633,143 +789,153 @@ export function GlobalAiChatWidget() {
         </div>
       </aside>
 
-      {/* ── Main Content ──────────────────────────────────────── */}
+      {/* ── Main ──────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col min-w-0 min-h-0 relative">
 
         {/* Top bar */}
-        <header className="flex items-center justify-between px-5 py-3.5 shrink-0">
+        <header
+          className="flex items-center justify-between px-5 py-3 shrink-0"
+          style={{ borderBottom: `1px solid ${borderColor}` }}
+        >
           <ModelPicker
             models={models}
             value={selectedModel}
             onChange={setSelectedModel}
             disabled={streaming}
+            dark={isDark}
           />
 
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[13px] text-white/50 hover:text-white hover:bg-white/10 transition-colors border border-transparent hover:border-white/10"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[13px] transition-colors"
+            style={{ color: textSecondary, border: `1px solid transparent` }}
             aria-label="Закрыть"
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = hoverBg;
+              (e.currentTarget as HTMLButtonElement).style.borderColor = borderColor;
+              (e.currentTarget as HTMLButtonElement).style.color = textPrimary;
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+              (e.currentTarget as HTMLButtonElement).style.borderColor = "transparent";
+              (e.currentTarget as HTMLButtonElement).style.color = textSecondary;
+            }}
           >
             <X size={16} />
             <span className="hidden sm:inline">Закрыть</span>
           </button>
         </header>
 
-        {/* Messages or welcome screen */}
-        <div
-          ref={scrollRef}
-          className="flex-1 overflow-y-auto min-h-0"
-        >
+        {/* Messages or welcome */}
+        <div ref={scrollRef} className="flex-1 overflow-y-auto min-h-0">
           {chatLoading ? (
             <div className="flex items-center justify-center h-full">
-              <SectionSpinner />
+              <SectionSpinner dark={isDark} />
             </div>
-          ) : !hasMessages ? (
-            /* ── Welcome Screen ── */
+          ) : messages.length === 0 ? (
+            /* Welcome */
             <div className="flex flex-col items-center justify-center h-full px-6 pb-24">
-              <h1 className="text-white text-3xl sm:text-4xl font-semibold mb-10 text-center tracking-tight">
+              <h1
+                className="text-3xl sm:text-4xl font-semibold mb-8 text-center tracking-tight"
+                style={{ color: textPrimary }}
+              >
                 С чего начнём?
               </h1>
 
-              {/* Quick action cards */}
-              <div className="flex flex-wrap gap-3 justify-center max-w-xl">
-                <button
-                  type="button"
-                  onClick={() => handleQuickAction("Создай изображение: ")}
-                  className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl text-[13px] text-white/80 hover:text-white transition-all border border-white/10 hover:border-white/20 hover:bg-white/8 backdrop-blur-sm"
-                  style={{ background: "rgba(255,255,255,0.05)" }}
-                >
-                  <Image size={15} className="text-purple-400 shrink-0" />
-                  Создать изображение
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickAction("Помоги написать или отредактировать: ")}
-                  className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl text-[13px] text-white/80 hover:text-white transition-all border border-white/10 hover:border-white/20 hover:bg-white/8 backdrop-blur-sm"
-                  style={{ background: "rgba(255,255,255,0.05)" }}
-                >
-                  <PenLine size={15} className="text-emerald-400 shrink-0" />
-                  Напиши или отредактируй
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickAction("Найди информацию о: ")}
-                  className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl text-[13px] text-white/80 hover:text-white transition-all border border-white/10 hover:border-white/20 hover:bg-white/8 backdrop-blur-sm"
-                  style={{ background: "rgba(255,255,255,0.05)" }}
-                >
-                  <Search size={15} className="text-blue-400 shrink-0" />
-                  Найди что-то
-                </button>
+              <div className="flex flex-col gap-2.5 w-full max-w-lg">
+                {suggestions.map((s, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => {
+                      setInput(s);
+                      setTimeout(() => textareaRef.current?.focus(), 0);
+                    }}
+                    className="flex items-center gap-3 px-4 py-3 rounded-2xl text-[13.5px] text-left transition-all"
+                    style={{
+                      background: suggestionBg,
+                      border: `1px solid ${suggestionBorder}`,
+                      color: textSecondary,
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background = hoverBg;
+                      (e.currentTarget as HTMLButtonElement).style.color = textPrimary;
+                      (e.currentTarget as HTMLButtonElement).style.borderColor = "#2563eb40";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background = suggestionBg;
+                      (e.currentTarget as HTMLButtonElement).style.color = textSecondary;
+                      (e.currentTarget as HTMLButtonElement).style.borderColor = suggestionBorder;
+                    }}
+                  >
+                    <span
+                      className="w-1.5 h-1.5 rounded-full shrink-0"
+                      style={{ background: "#2563eb", opacity: 0.7 }}
+                    />
+                    {s}
+                  </button>
+                ))}
               </div>
             </div>
           ) : (
-            /* ── Chat Messages ── */
+            /* Chat */
             <div className="max-w-3xl mx-auto px-4 py-6 space-y-5">
               {messages.map((m) => (
                 <div
                   key={m.id}
-                  className={[
-                    "flex",
-                    m.role === "user" ? "justify-end" : "justify-start",
-                  ].join(" ")}
+                  className={["flex", m.role === "user" ? "justify-end" : "justify-start"].join(" ")}
                 >
                   <div
-                    className={[
-                      "max-w-[80%] rounded-2xl px-4 py-3 text-[14px] leading-relaxed",
-                      m.role === "user"
-                        ? "text-white rounded-br-md"
-                        : "text-white/90 rounded-bl-md",
-                    ].join(" ")}
+                    className="max-w-[80%] rounded-2xl px-4 py-3 text-[14px] leading-relaxed"
                     style={
                       m.role === "user"
-                        ? { background: "rgba(99,102,241,0.7)", backdropFilter: "blur(8px)" }
-                        : { background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)" }
+                        ? { background: msgUserBg, color: "#ffffff", borderRadius: "18px 18px 4px 18px" }
+                        : { background: msgAiBg, border: `1px solid ${msgAiBorder}`, color: textPrimary, borderRadius: "18px 18px 18px 4px" }
                     }
                   >
-                    {m.role === "user" &&
-                      m._pendingFiles?.some((f) => f.kind === "image") && (
-                        <div className="flex flex-wrap gap-1.5 mb-2">
-                          {m._pendingFiles
-                            .filter((f) => f.kind === "image" && f.url)
-                            .map((f) => (
-                              <img
-                                key={f.fileId}
-                                src={f.url!}
-                                alt={f.fileName}
-                                className="max-h-44 max-w-[260px] rounded-xl object-cover"
-                              />
-                            ))}
-                        </div>
-                      )}
+                    {m.role === "user" && m._pendingFiles?.some((f) => f.kind === "image") && (
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        {m._pendingFiles
+                          .filter((f) => f.kind === "image" && f.url)
+                          .map((f) => (
+                            <img
+                              key={f.fileId}
+                              src={f.url!}
+                              alt={f.fileName}
+                              className="max-h-44 max-w-[260px] rounded-xl object-cover"
+                            />
+                          ))}
+                      </div>
+                    )}
 
-                    {m.role === "user" &&
-                      m._pendingFiles?.some((f) => f.kind === "document") && (
-                        <div className="flex flex-wrap gap-1 mb-2">
-                          {m._pendingFiles
-                            .filter((f) => f.kind === "document")
-                            .map((f) => (
-                              <span
-                                key={f.fileId}
-                                className="inline-flex items-center gap-1 text-[11px] bg-white/20 rounded-lg px-2 py-0.5"
-                              >
-                                <FileText size={10} />
-                                {f.fileName}
-                              </span>
-                            ))}
-                        </div>
-                      )}
+                    {m.role === "user" && m._pendingFiles?.some((f) => f.kind === "document") && (
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {m._pendingFiles
+                          .filter((f) => f.kind === "document")
+                          .map((f) => (
+                            <span
+                              key={f.fileId}
+                              className="inline-flex items-center gap-1 text-[11px] bg-white/20 rounded-lg px-2 py-0.5"
+                            >
+                              <FileText size={10} />
+                              {f.fileName}
+                            </span>
+                          ))}
+                      </div>
+                    )}
 
                     {m.role === "assistant" && !m.content && streaming ? (
-                      <span className="inline-flex items-center gap-1.5 text-white/50">
+                      <span
+                        className="inline-flex items-center gap-1.5"
+                        style={{ color: textSecondary }}
+                      >
                         <Loader2 size={13} className="animate-spin" />
                         Думаю…
                       </span>
                     ) : m.content ? (
                       <span
-                        dangerouslySetInnerHTML={{
-                          __html: renderMarkdown(m.content),
-                        }}
+                        dangerouslySetInnerHTML={{ __html: renderMarkdown(m.content, isDark) }}
                       />
                     ) : null}
                   </div>
@@ -777,7 +943,14 @@ export function GlobalAiChatWidget() {
               ))}
 
               {error && (
-                <div className="text-[12px] text-red-400 bg-red-950/40 border border-red-900/50 rounded-xl px-4 py-2.5">
+                <div
+                  className="text-[12px] rounded-xl px-4 py-2.5"
+                  style={{
+                    color: "#ef4444",
+                    background: isDark ? "rgba(239,68,68,0.08)" : "rgba(239,68,68,0.06)",
+                    border: `1px solid rgba(239,68,68,0.2)`,
+                  }}
+                >
                   {error}
                 </div>
               )}
@@ -785,13 +958,10 @@ export function GlobalAiChatWidget() {
           )}
         </div>
 
-        {/* ── Input Area ─────────────────────────────────────── */}
-        <div className="shrink-0 px-4 pb-6 pt-2">
-          <form
-            onSubmit={handleSubmit}
-            className="max-w-3xl mx-auto"
-          >
-            {/* Pending attachments */}
+        {/* Input area */}
+        <div className="shrink-0 px-4 pb-5 pt-2">
+          <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
+            {/* Pending files */}
             {pendingFiles.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-3 px-1">
                 {pendingFiles.map((f) => (
@@ -800,27 +970,24 @@ export function GlobalAiChatWidget() {
                       <img
                         src={f.url}
                         alt={f.fileName}
-                        className="h-14 w-14 rounded-xl object-cover ring-1 ring-white/20"
+                        className="h-14 w-14 rounded-xl object-cover"
+                        style={{ border: `1px solid ${borderColor}` }}
                       />
                     ) : (
                       <div
-                        className="h-14 px-2 rounded-xl flex items-center gap-1.5 max-w-[130px] border border-white/10"
-                        style={{ background: "rgba(255,255,255,0.08)" }}
+                        className="h-14 px-2 rounded-xl flex items-center gap-1.5 max-w-[130px]"
+                        style={{ background: inputBg, border: `1px solid ${borderColor}` }}
                       >
-                        <FileText size={13} className="text-white/40 shrink-0" />
-                        <span className="text-[11px] text-white/60 truncate">
+                        <FileText size={13} style={{ color: textMuted, flexShrink: 0 }} />
+                        <span className="text-[11px] truncate" style={{ color: textSecondary }}>
                           {f.fileName}
                         </span>
                       </div>
                     )}
                     <button
                       type="button"
-                      onClick={() =>
-                        setPendingFiles((prev) =>
-                          prev.filter((x) => x.fileId !== f.fileId),
-                        )
-                      }
-                      className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => setPendingFiles((prev) => prev.filter((x) => x.fileId !== f.fileId))}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <X size={9} />
                     </button>
@@ -831,30 +998,81 @@ export function GlobalAiChatWidget() {
 
             {/* Input box */}
             <div
-              className="flex items-end gap-2 rounded-2xl px-3 py-2.5 border border-white/15 hover:border-white/25 transition-colors"
-              style={{ background: "rgba(255,255,255,0.08)", backdropFilter: "blur(12px)" }}
+              className="flex items-end gap-2 rounded-2xl px-3 py-2.5 transition-colors"
+              style={{
+                background: inputBg,
+                border: `1px solid ${inputBorder}`,
+              }}
             >
               <input
                 ref={fileInputRef}
                 type="file"
                 className="hidden"
-                accept=".pdf,.doc,.docx,.txt,.md,.csv,.jpg,.jpeg,.png,.gif,.webp"
                 onChange={(e) => void handleFileUpload(e)}
               />
 
-              <button
-                type="button"
-                disabled={uploading || streaming}
-                onClick={() => fileInputRef.current?.click()}
-                className="shrink-0 p-1.5 rounded-lg text-white/40 hover:text-white/70 transition-colors disabled:opacity-30"
-                title="Прикрепить файл"
-              >
-                {uploading ? (
-                  <Loader2 size={17} className="animate-spin" />
-                ) : (
-                  <Paperclip size={17} />
+              {/* Attach button with dropdown */}
+              <div ref={attachMenuRef} className="relative shrink-0">
+                <button
+                  type="button"
+                  disabled={uploading || streaming}
+                  onClick={() => setAttachMenuOpen((p) => !p)}
+                  className="p-1.5 rounded-lg transition-colors disabled:opacity-30"
+                  style={{ color: attachMenuOpen ? "#2563eb" : textSecondary }}
+                  title="Прикрепить файл"
+                  onMouseEnter={(e) => {
+                    if (!attachMenuOpen)
+                      (e.currentTarget as HTMLButtonElement).style.color = textPrimary;
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!attachMenuOpen)
+                      (e.currentTarget as HTMLButtonElement).style.color = textSecondary;
+                  }}
+                >
+                  {uploading ? (
+                    <Loader2 size={17} className="animate-spin" />
+                  ) : (
+                    <Paperclip size={17} />
+                  )}
+                </button>
+
+                {attachMenuOpen && (
+                  <div
+                    className="absolute bottom-full mb-2 left-0 rounded-2xl shadow-xl z-50 overflow-hidden w-56"
+                    style={{
+                      background: dropdownBg,
+                      border: `1px solid ${borderColor}`,
+                    }}
+                  >
+                    {ATTACH_OPTIONS.map((opt) => {
+                      const Icon = opt.icon;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => handleAttachSelect(opt.accept)}
+                          className="w-full flex items-start gap-3 px-4 py-3 text-left transition-colors"
+                          style={{ color: textPrimary }}
+                          onMouseEnter={(e) => {
+                            (e.currentTarget as HTMLButtonElement).style.background = hoverBg;
+                          }}
+                          onMouseLeave={(e) => {
+                            (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                          }}
+                        >
+                          <Icon size={16} style={{ color: opt.color, flexShrink: 0, marginTop: 1 }} />
+                          <div>
+                            <div className="text-[13px] font-medium leading-tight">{opt.label}</div>
+                            <div className="text-[11px] leading-tight mt-0.5" style={{ color: textMuted }}>
+                              {opt.ext}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
                 )}
-              </button>
+              </div>
 
               <textarea
                 ref={textareaRef}
@@ -869,34 +1087,29 @@ export function GlobalAiChatWidget() {
                 placeholder="Напишите сообщение…"
                 rows={1}
                 disabled={streaming}
-                className="flex-1 resize-none max-h-40 min-h-[28px] bg-transparent text-[14px] text-white placeholder:text-white/30 focus:outline-none leading-relaxed py-0.5"
-                style={{ scrollbarWidth: "none" }}
+                className="flex-1 resize-none max-h-40 min-h-[28px] bg-transparent text-[14px] focus:outline-none leading-relaxed py-0.5"
+                style={{
+                  color: textPrimary,
+                  scrollbarWidth: "none",
+                }}
               />
-
-              <button
-                type="button"
-                disabled={streaming}
-                className="shrink-0 p-1.5 rounded-lg text-white/40 hover:text-white/70 transition-colors disabled:opacity-30"
-                title="Голосовой ввод"
-              >
-                <Mic size={17} />
-              </button>
 
               <button
                 type="submit"
                 disabled={!input.trim() || streaming}
                 className="shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all disabled:opacity-30"
                 style={{
-                  background: input.trim() && !streaming
-                    ? "linear-gradient(135deg, #6366f1, #8b5cf6)"
-                    : "rgba(255,255,255,0.15)",
+                  background: input.trim() && !streaming ? "#2563eb" : (isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"),
                 }}
               >
-                <Send size={14} className="text-white" />
+                <Send size={14} style={{ color: input.trim() && !streaming ? "#fff" : textMuted }} />
               </button>
             </div>
 
-            <p className="text-center text-[11px] text-white/20 mt-2.5">
+            <p
+              className="text-center text-[11px] mt-2"
+              style={{ color: textMuted }}
+            >
               ИИ может допускать ошибки. Проверяйте важную информацию.
             </p>
           </form>
