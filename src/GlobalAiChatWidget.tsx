@@ -21,6 +21,7 @@ import {
   Image,
   FileSpreadsheet,
   File,
+  Eye,
 } from "lucide-react";
 
 const ANALYTICS_HOSTS = new Set([
@@ -82,6 +83,7 @@ interface ChatMessage {
 interface ModelOption {
   id: string;
   label: string;
+  supportsVision?: boolean;
 }
 
 function getApiBase(): string {
@@ -334,7 +336,12 @@ function ModelPicker({
                 }}
               >
                 <span className="truncate">{m.label}</span>
-                {m.id === value && <Check size={13} className="shrink-0 text-blue-600" />}
+                <span className="flex items-center gap-1 shrink-0">
+                  {m.supportsVision && (
+                    <Eye size={11} title="Поддерживает изображения" style={{ opacity: 0.5, color: "#22c55e" }} />
+                  )}
+                  {m.id === value && <Check size={13} className="text-blue-600" />}
+                </span>
               </button>
             ))}
           </div>
@@ -1060,6 +1067,21 @@ export function GlobalAiChatWidget() {
         {/* Input area */}
         <div className="shrink-0 px-4 pb-5 pt-2">
           <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
+            {/* Vision warning: image attached but model doesn't support it */}
+            {pendingFiles.some((f) => f.kind === "image") &&
+              !models.find((m) => m.id === selectedModel)?.supportsVision && (
+              <div
+                className="flex items-center gap-2 rounded-xl px-3 py-2 mb-2 text-[12px]"
+                style={{
+                  background: isDark ? "rgba(234,179,8,0.08)" : "rgba(234,179,8,0.08)",
+                  border: "1px solid rgba(234,179,8,0.25)",
+                  color: isDark ? "#fbbf24" : "#b45309",
+                }}
+              >
+                <Eye size={13} style={{ flexShrink: 0 }} />
+                Текущая модель не видит изображения. Выберите GPT-4o, Gemini или Claude для анализа скриншотов.
+              </div>
+            )}
             {/* Pending files */}
             {pendingFiles.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-3 px-1">
