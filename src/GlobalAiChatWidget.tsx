@@ -338,7 +338,7 @@ function ModelPicker({
                 <span className="truncate">{m.label}</span>
                 <span className="flex items-center gap-1 shrink-0">
                   {m.supportsVision && (
-                    <Eye size={11} title="Поддерживает изображения" style={{ opacity: 0.5, color: "#22c55e" }} />
+                    <Eye size={11} style={{ opacity: 0.5, color: "#22c55e" }} />
                   )}
                   {m.id === value && <Check size={13} className="text-blue-600" />}
                 </span>
