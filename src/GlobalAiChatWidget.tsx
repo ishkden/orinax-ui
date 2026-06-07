@@ -628,7 +628,8 @@ export function GlobalAiChatWidget() {
 
   const sendMessage = async (text: string) => {
     const trimmed = text.trim();
-    if (!trimmed || streaming) return;
+    // Allow sending with files even without text
+    if ((!trimmed && pendingFiles.length === 0) || streaming) return;
 
     let sessionId = activeId;
     if (!sessionId) {
@@ -648,6 +649,10 @@ export function GlobalAiChatWidget() {
     const filesToSend = [...pendingFiles];
     const attachmentFileIds = filesToSend.map((f) => f.fileId);
 
+    // When only files are attached with no text, use a neutral prompt
+    const effectiveText = trimmed ||
+      (filesToSend.some((f) => f.kind === "image") ? "Что изображено на скриншоте?" : "Проанализируй прикреплённый файл.");
+
     setInput("");
     setPendingFiles([]);
     setStreaming(true);
@@ -656,7 +661,7 @@ export function GlobalAiChatWidget() {
     const userMsg: ChatMessage = {
       id: `tmp-${Date.now()}`,
       role: "user",
-      content: trimmed,
+      content: trimmed, // show original (possibly empty) in UI — image preview is enough
       _pendingFiles: filesToSend.length > 0 ? filesToSend : undefined,
     };
     const assistantPlaceholder: ChatMessage = {
@@ -676,7 +681,7 @@ export function GlobalAiChatWidget() {
           credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            message: trimmed,
+            message: effectiveText,
             model: selectedModel,
             attachmentFileIds: attachmentFileIds.length ? attachmentFileIds : undefined,
           }),
@@ -1217,13 +1222,13 @@ export function GlobalAiChatWidget() {
 
               <button
                 type="submit"
-                disabled={!input.trim() || streaming}
+                disabled={(!input.trim() && pendingFiles.length === 0) || streaming}
                 className="shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all disabled:opacity-30"
                 style={{
-                  background: input.trim() && !streaming ? "#2563eb" : (isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"),
+                  background: (input.trim() || pendingFiles.length > 0) && !streaming ? "#2563eb" : (isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"),
                 }}
               >
-                <Send size={14} style={{ color: input.trim() && !streaming ? "#fff" : textMuted }} />
+                <Send size={14} style={{ color: (input.trim() || pendingFiles.length > 0) && !streaming ? "#fff" : textMuted }} />
               </button>
             </div>
 
