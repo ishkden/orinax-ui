@@ -521,8 +521,28 @@ export function GlobalAiChatWidget() {
     setError(null);
     setSuggestions(getRandomSuggestions(3));
     void loadModels();
-    void loadSessions();
-  }, [open, loadModels, loadSessions]);
+    // Load sessions and auto-resume the most recent one
+    void (async () => {
+      setSessionsLoading(true);
+      try {
+        const res = await fetch(apiUrl("/api/global-ai-chat/sessions"), {
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error();
+        const data = (await res.json()) as { sessions: ChatSession[] };
+        const list = data.sessions ?? [];
+        setSessions(list);
+        // Automatically open the most recent session (first in list)
+        if (list.length > 0) {
+          void loadSession(list[0].id);
+        }
+      } catch {
+        setError("Не удалось загрузить чаты");
+      } finally {
+        setSessionsLoading(false);
+      }
+    })();
+  }, [open, loadModels, loadSession]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
