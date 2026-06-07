@@ -551,6 +551,17 @@ export function GlobalAiChatWidget() {
     });
   }, [messages, streaming]);
 
+  // Auto-resize textarea up to 9 rows
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const lineHeight = parseInt(getComputedStyle(el).lineHeight) || 22;
+    const maxHeight = lineHeight * 9 + 8; // 9 rows + padding
+    el.style.height = Math.min(el.scrollHeight, maxHeight) + "px";
+    el.style.overflowY = el.scrollHeight > maxHeight ? "auto" : "hidden";
+  }, [input]);
+
   const createSession = async () => {
     setError(null);
     const res = await fetch(apiUrl("/api/global-ai-chat/sessions"), {
@@ -674,6 +685,11 @@ export function GlobalAiChatWidget() {
       (filesToSend.some((f) => f.kind === "image") ? "Что изображено на скриншоте?" : "Проанализируй прикреплённый файл.");
 
     setInput("");
+    // Collapse textarea back to 1 row
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.overflowY = "hidden";
+    }
     setPendingFiles([]);
     setStreaming(true);
     setError(null);
@@ -1233,10 +1249,11 @@ export function GlobalAiChatWidget() {
                 placeholder="Напишите сообщение…"
                 rows={1}
                 disabled={streaming}
-                className="flex-1 resize-none max-h-40 min-h-[28px] bg-transparent text-[14px] focus:outline-none leading-relaxed py-0.5"
+                className="flex-1 resize-none min-h-[28px] bg-transparent text-[14px] focus:outline-none leading-relaxed py-0.5"
                 style={{
                   color: textPrimary,
-                  scrollbarWidth: "none",
+                  overflowY: "hidden",
+                  scrollbarWidth: "thin",
                 }}
               />
 
