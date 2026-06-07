@@ -15,7 +15,6 @@ import {
   Paperclip,
   Loader2,
   Trash2,
-  MessageSquare,
   FileText,
   ChevronDown,
   Check,
@@ -760,7 +759,6 @@ export function GlobalAiChatWidget() {
                   className="flex-1 min-w-0 text-left flex items-center gap-2"
                   onClick={() => void loadSession(s.id)}
                 >
-                  <MessageSquare size={11} style={{ color: textMuted, flexShrink: 0 }} />
                   <span
                     className="text-[12.5px] truncate leading-tight"
                     style={{ color: textSecondary }}
