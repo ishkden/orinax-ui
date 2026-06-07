@@ -155,10 +155,19 @@ function renderMarkdown(text: string, dark: boolean): string {
   const withPH = text.replace(/```(\w*)\n?([\s\S]*?)```/g, (_m, lang: string, code: string) => {
     const idx = blocks.length;
     const langBadge = lang
-      ? `<span style="float:right;font-size:11px;opacity:0.35;font-family:ui-monospace,Menlo,Consolas,monospace;">${esc(lang)}</span>`
-      : "";
+      ? `<span style="font-size:11px;opacity:0.4;font-family:ui-monospace,Menlo,Consolas,monospace;">${esc(lang)}</span>`
+      : `<span></span>`;
+    const copyBtnColor = dark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.45)";
+    const copyBtnHover = dark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)";
+    const escapedCode = esc(code.trim()).replace(/"/g, "&quot;");
+    const rawCode = code.trim().replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$/g, "\\$");
     blocks.push(
-      `<pre style="margin:10px 0;padding:12px 16px;border-radius:10px;background:${codeBlockBg};border:1px solid ${codeBlockBdr};overflow-x:auto;clear:both;">${langBadge}<code style="color:${codeTextColor};font-family:ui-monospace,'Cascadia Code','Source Code Pro',Menlo,Consolas,monospace;font-size:13px;line-height:1.55;white-space:pre;display:block;">${esc(code.trim())}</code></pre>`
+      `<pre style="margin:10px 0;padding:12px 16px;border-radius:10px;background:${codeBlockBg};border:1px solid ${codeBlockBdr};overflow-x:auto;clear:both;position:relative;">` +
+      `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">` +
+      langBadge +
+      `<button onclick="(function(btn){var code=btn.getAttribute('data-code');navigator.clipboard.writeText(code).then(function(){btn.textContent='Скопировано';btn.style.color='#22c55e';setTimeout(function(){btn.textContent='Копировать';btn.style.color='${copyBtnColor}';},1500)}).catch(function(){});})(this)" data-code="${escapedCode}" style="font-size:11px;padding:2px 8px;border-radius:5px;border:1px solid ${codeBlockBdr};background:transparent;cursor:pointer;color:${copyBtnColor};font-family:ui-sans-serif,system-ui,sans-serif;transition:background 0.15s;" onmouseover="this.style.background='${copyBtnHover}'" onmouseout="this.style.background='transparent'">Копировать</button>` +
+      `</div>` +
+      `<code style="color:${codeTextColor};font-family:ui-monospace,'Cascadia Code','Source Code Pro',Menlo,Consolas,monospace;font-size:13px;line-height:1.55;white-space:pre;display:block;">${esc(code.trim())}</code></pre>`
     );
     return `\x02BLOCK${idx}\x03`;
   });
