@@ -611,9 +611,9 @@ export function GlobalAiChatWidget() {
   };
 
   const handleFileUpload = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const files = Array.from(e.target.files ?? []);
     e.target.value = "";
-    if (!file) return;
+    if (files.length === 0) return;
 
     setUploading(true);
     setError(null);
@@ -621,28 +621,31 @@ export function GlobalAiChatWidget() {
       const sessionId = await ensureSession();
       if (!sessionId) { setError("Не удалось создать чат"); return; }
 
-      const form = new FormData();
-      form.append("file", file);
-      const res = await fetch(
-        apiUrl(`/api/global-ai-chat/sessions/${sessionId}/files`),
-        { method: "POST", credentials: "include", body: form },
+      await Promise.all(
+        files.map(async (file) => {
+          const form = new FormData();
+          form.append("file", file);
+          const res = await fetch(
+            apiUrl(`/api/global-ai-chat/sessions/${sessionId}/files`),
+            { method: "POST", credentials: "include", body: form },
+          );
+          const data = (await res.json()) as {
+            file?: { id: string; fileName: string; kind: string; status: string; publicUrl: string | null };
+            error?: string;
+          };
+          if (res.ok && data.file) {
+            setPendingFiles((prev) => [
+              ...prev,
+              {
+                fileId: data.file!.id,
+                fileName: data.file!.fileName,
+                kind: data.file!.kind as "image" | "document",
+                url: data.file!.publicUrl,
+              },
+            ]);
+          }
+        }),
       );
-      const data = (await res.json()) as {
-        file?: { id: string; fileName: string; kind: string; status: string; publicUrl: string | null };
-        error?: string;
-      };
-      if (!res.ok) { setError(data.error ?? "upload_failed"); return; }
-      if (data.file) {
-        setPendingFiles((prev) => [
-          ...prev,
-          {
-            fileId: data.file!.id,
-            fileName: data.file!.fileName,
-            kind: data.file!.kind as "image" | "document",
-            url: data.file!.publicUrl,
-          },
-        ]);
-      }
     } finally {
       setUploading(false);
     }
@@ -1169,6 +1172,7 @@ export function GlobalAiChatWidget() {
               <input
                 ref={fileInputRef}
                 type="file"
+                multiple
                 className="hidden"
                 onChange={(e) => void handleFileUpload(e)}
               />
