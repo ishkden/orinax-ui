@@ -119,21 +119,122 @@ function SectionSpinner({ dark }: { dark: boolean }) {
 }
 
 function renderMarkdown(text: string, dark: boolean): string {
-  const escaped = text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-  const pre = dark
-    ? "my-2 p-3 rounded-xl bg-black/30 text-xs overflow-x-auto border border-white/10"
-    : "my-2 p-3 rounded-xl bg-black/5 text-xs overflow-x-auto border border-black/10";
-  const code = dark
-    ? "px-1 py-0.5 rounded bg-black/30 text-xs border border-white/10"
-    : "px-1 py-0.5 rounded bg-black/5 text-xs border border-black/10";
-  return escaped
-    .replace(/```([\s\S]*?)```/g, `<pre class="${pre}"><code>$1</code></pre>`)
-    .replace(/`([^`]+)`/g, `<code class="${code}">$1</code>`)
-    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-    .replace(/\n/g, "<br/>");
+  const codeBlockBg   = dark ? "rgba(0,0,0,0.45)"           : "rgba(0,0,0,0.05)";
+  const codeBlockBdr  = dark ? "rgba(255,255,255,0.1)"       : "rgba(0,0,0,0.1)";
+  const inlineCodeBg  = dark ? "rgba(255,255,255,0.12)"      : "rgba(0,0,0,0.08)";
+  const linkColor     = dark ? "#93c5fd"                     : "#2563eb";
+  const headingColor  = dark ? "rgba(255,255,255,0.95)"      : "rgba(0,0,0,0.9)";
+  const hrColor       = dark ? "rgba(255,255,255,0.1)"       : "rgba(0,0,0,0.12)";
+  const bqBorder      = dark ? "rgba(99,102,241,0.7)"        : "#6366f1";
+  const bqBg          = dark ? "rgba(99,102,241,0.06)"       : "rgba(99,102,241,0.04)";
+  const codeTextColor = dark ? "#e2e8f0"                     : "#1e293b";
+
+  const esc = (s: string) =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+  const inline = (s: string): string =>
+    esc(s)
+      // Links [text](url)
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g,
+        `<a href="$2" target="_blank" rel="noopener noreferrer" style="color:${linkColor};text-decoration:underline;text-underline-offset:2px;">$1</a>`)
+      // Inline code
+      .replace(/`([^`\n]+)`/g,
+        `<code style="padding:1px 6px;border-radius:4px;background:${inlineCodeBg};font-size:0.875em;font-family:ui-monospace,'Cascadia Code',Menlo,Consolas,monospace;">$1</code>`)
+      // Bold + italic
+      .replace(/\*\*\*([^*\n]+)\*\*\*/g, "<strong><em>$1</em></strong>")
+      // Bold
+      .replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>")
+      // Italic
+      .replace(/\*([^*\n]+)\*/g, "<em>$1</em>")
+      .replace(/_([^_\n]+)_/g, "<em>$1</em>");
+
+  // Extract fenced code blocks → placeholders to protect them from inline processing
+  const blocks: string[] = [];
+  const withPH = text.replace(/```(\w*)\n?([\s\S]*?)```/g, (_m, lang: string, code: string) => {
+    const idx = blocks.length;
+    const langBadge = lang
+      ? `<span style="float:right;font-size:11px;opacity:0.35;font-family:ui-monospace,Menlo,Consolas,monospace;">${esc(lang)}</span>`
+      : "";
+    blocks.push(
+      `<pre style="margin:10px 0;padding:12px 16px;border-radius:10px;background:${codeBlockBg};border:1px solid ${codeBlockBdr};overflow-x:auto;clear:both;">${langBadge}<code style="color:${codeTextColor};font-family:ui-monospace,'Cascadia Code','Source Code Pro',Menlo,Consolas,monospace;font-size:13px;line-height:1.55;white-space:pre;display:block;">${esc(code.trim())}</code></pre>`
+    );
+    return `\x02BLOCK${idx}\x03`;
+  });
+
+  const lines = withPH.split("\n");
+  const out: string[] = [];
+  let listType: "ul" | "ol" | null = null;
+
+  const closeList = () => {
+    if (listType === "ul") { out.push("</ul>"); listType = null; }
+    else if (listType === "ol") { out.push("</ol>"); listType = null; }
+  };
+
+  for (const line of lines) {
+    // Restore code block placeholder
+    if (/\x02BLOCK\d+\x03/.test(line)) {
+      closeList();
+      out.push(line.replace(/\x02BLOCK(\d+)\x03/g, (_, i: string) => blocks[parseInt(i)]));
+      continue;
+    }
+
+    // Headings
+    const hm = line.match(/^(#{1,3}) (.+)/);
+    if (hm) {
+      closeList();
+      const lvl = hm[1].length;
+      const sz  = ["20px", "17px", "15px"][lvl - 1];
+      const fw  = lvl === 1 ? "700" : "600";
+      const mg  = ["16px 0 7px", "13px 0 5px", "10px 0 4px"][lvl - 1];
+      out.push(`<h${lvl} style="font-size:${sz};font-weight:${fw};margin:${mg};color:${headingColor};line-height:1.3;">${inline(hm[2])}</h${lvl}>`);
+      continue;
+    }
+
+    // Unordered list
+    const ulm = line.match(/^[-*+] (.+)/);
+    if (ulm) {
+      if (listType !== "ul") { closeList(); out.push(`<ul style="margin:6px 0;padding-left:22px;">`); listType = "ul"; }
+      out.push(`<li style="margin:2px 0;line-height:1.65;">${inline(ulm[1])}</li>`);
+      continue;
+    }
+
+    // Ordered list
+    const olm = line.match(/^\d+\. (.+)/);
+    if (olm) {
+      if (listType !== "ol") { closeList(); out.push(`<ol style="margin:6px 0;padding-left:22px;">`); listType = "ol"; }
+      out.push(`<li style="margin:2px 0;line-height:1.65;">${inline(olm[1])}</li>`);
+      continue;
+    }
+
+    // Blockquote
+    const bqm = line.match(/^> (.*)/);
+    if (bqm) {
+      closeList();
+      out.push(`<blockquote style="margin:6px 0;padding:5px 10px 5px 12px;border-left:3px solid ${bqBorder};background:${bqBg};border-radius:0 6px 6px 0;">${inline(bqm[1])}</blockquote>`);
+      continue;
+    }
+
+    // Horizontal rule
+    if (/^---+$/.test(line.trim()) || /^\*\*\*+$/.test(line.trim())) {
+      closeList();
+      out.push(`<hr style="border:none;border-top:1px solid ${hrColor};margin:10px 0;"/>`);
+      continue;
+    }
+
+    // Empty line → small gap
+    if (line.trim() === "") {
+      closeList();
+      out.push(`<div style="height:6px;"></div>`);
+      continue;
+    }
+
+    // Regular paragraph
+    closeList();
+    out.push(`<p style="margin:1px 0;line-height:1.65;">${inline(line)}</p>`);
+  }
+
+  closeList();
+  return out.join("");
 }
 
 function ModelPicker({
