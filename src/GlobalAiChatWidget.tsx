@@ -412,6 +412,7 @@ export function GlobalAiChatWidget() {
   const [error, setError] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
+  const [contextUsed, setContextUsed] = useState<{ used: number; max: number } | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -773,7 +774,9 @@ export function GlobalAiChatWidget() {
           if (!dataLine) continue;
           try {
             const payload = JSON.parse(dataLine) as Record<string, unknown>;
-            if (event === "token" && typeof payload.content === "string") {
+            if (event === "meta" && typeof payload.contextUsedTokens === "number") {
+              setContextUsed({ used: payload.contextUsedTokens as number, max: payload.contextMaxTokens as number });
+            } else if (event === "token" && typeof payload.content === "string") {
               setMessages((prev) =>
                 prev.map((m) =>
                   m.id === assistantPlaceholder.id
@@ -796,6 +799,8 @@ export function GlobalAiChatWidget() {
     } finally {
       setStreaming(false);
       abortRef.current = null;
+      // Restore focus to the input so the user can keep typing immediately
+      setTimeout(() => textareaRef.current?.focus(), 0);
     }
   };
 
@@ -1282,12 +1287,30 @@ export function GlobalAiChatWidget() {
               </button>
             </div>
 
-            <p
-              className="text-center text-[11px] mt-2"
-              style={{ color: textMuted }}
-            >
-              ИИ может допускать ошибки. Проверяйте важную информацию.
-            </p>
+            <div className="flex items-center justify-between mt-1.5 px-0.5">
+              {contextUsed && contextUsed.max > 0 ? (
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <div className="relative h-1 w-20 rounded-full overflow-hidden" style={{ background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)" }}>
+                    <div
+                      className="absolute inset-y-0 left-0 rounded-full transition-all"
+                      style={{
+                        width: `${Math.min(100, Math.round(contextUsed.used / contextUsed.max * 100))}%`,
+                        background: contextUsed.used / contextUsed.max > 0.85 ? "#f59e0b" : "#3b82f6",
+                      }}
+                    />
+                  </div>
+                  <span className="text-[10px] shrink-0" style={{ color: textMuted }}>
+                    {Math.round(contextUsed.used / contextUsed.max * 100)}% контекста
+                  </span>
+                </div>
+              ) : <span />}
+              <p
+                className="text-[11px]"
+                style={{ color: textMuted }}
+              >
+                ИИ может допускать ошибки
+              </p>
+            </div>
           </form>
         </div>
       </div>
