@@ -54,14 +54,19 @@ function ThemeToggle() {
   );
 }
 
+const ANALYTICS_URL = "https://analytics.orinax.ai/dashboard";
+const PROFILE_URL = "https://my.orinax.ai/profile";
+
 const SERVICES = [
-  { label: "Аналитика", href: "https://analytics.orinax.ai", hosts: ["analytics.orinax.ai", "my.orinax.ai", "localhost"], icon: BarChart3 },
+  { label: "Аналитика", href: ANALYTICS_URL, hosts: ["analytics.orinax.ai"], icon: BarChart3 },
   { label: "CRM", href: "https://crm.orinax.ai", hosts: ["crm.orinax.ai"], icon: Users },
   { label: "Коннектор", href: "https://connector.orinax.ai", hosts: ["connector.orinax.ai"], icon: Plug },
   { label: "Маркетинг", href: "https://marketing.orinax.ai", hosts: ["marketing.orinax.ai"], icon: Megaphone },
 ];
 
+/** Same Next.js app serves my.orinax.ai + analytics.orinax.ai — org background API is same-origin on both. */
 const ANALYTICS_HOSTS = ["analytics.orinax.ai", "my.orinax.ai", "localhost"];
+const MY_HOSTS = ["my.orinax.ai", "localhost"];
 
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -125,8 +130,13 @@ export function GlobalHeader({ onLogout, activeService }: GlobalHeaderProps = {}
   const userImage = session?.user?.image ?? null;
 
   useLayoutEffect(() => {
-    setCurrentHost(window.location.hostname);
-    setCurrentPath(window.location.pathname);
+    const sync = () => {
+      setCurrentHost(window.location.hostname);
+      setCurrentPath(window.location.pathname);
+    };
+    sync();
+    window.addEventListener("popstate", sync);
+    return () => window.removeEventListener("popstate", sync);
   }, []);
 
   const fetchAndApplyBg = useCallback(() => {
@@ -170,9 +180,14 @@ export function GlobalHeader({ onLogout, activeService }: GlobalHeaderProps = {}
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const SHARED_PATHS = ["/profile", "/settings"];
+  const SHARED_PATHS = ["/profile", "/settings", "/team", "/roles", "/billing", "/knowledge"];
   const isSharedPath = SHARED_PATHS.some((p) => currentPath.startsWith(p));
-  const activeHref = activeService || (isSharedPath ? "" : SERVICES.find((s) => s.hosts.includes(currentHost))?.href ?? "");
+  const isMyHost = MY_HOSTS.includes(currentHost);
+  const activeHref =
+    activeService ||
+    (isSharedPath || isMyHost
+      ? ""
+      : SERVICES.find((s) => s.hosts.includes(currentHost))?.href ?? "");
 
   const handleLogout = async () => {
     setDropdownOpen(false);
@@ -296,7 +311,7 @@ export function GlobalHeader({ onLogout, activeService }: GlobalHeaderProps = {}
 
               <div className="py-1">
                 <a
-                  href={currentHost === "localhost" ? "/profile" : "https://my.orinax.ai/profile"}
+                  href={currentHost === "localhost" ? "/profile" : PROFILE_URL}
                   onClick={() => setDropdownOpen(false)}
                   className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] text-gray-600 dark:text-[#a1a1aa] hover:text-gray-900 dark:hover:text-[#fafafa] hover:bg-gray-50 dark:hover:bg-[#27272a] transition-colors duration-150"
                 >
