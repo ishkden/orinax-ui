@@ -242,7 +242,7 @@ export function GlobalHeader({ onLogout, activeService }: GlobalHeaderProps = {}
               window.dispatchEvent(new Event("orinax:open-ai-chat"));
             }
           }}
-          title="AI-чат — беседа с моделями OpenRouter"
+          title="ИИ-чат Orinax — беседа с моделями искусственного интеллекта"
           className="p-1.5 rounded-md text-gray-400 dark:text-[#71717a] hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-[#27272a] transition-colors duration-200 shrink-0"
         >
           <Sparkles size={16} strokeWidth={1.75} />
