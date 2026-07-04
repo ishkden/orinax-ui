@@ -233,44 +233,23 @@ export function GlobalHeader({ onLogout, activeService }: GlobalHeaderProps = {}
           })}
         </nav>
 
-        <div className="flex-1" />
-
-        <button
-          type="button"
-          onClick={() => {
-            if (typeof window !== "undefined") {
-              window.dispatchEvent(new Event("orinax:open-ai-chat"));
-            }
-          }}
-          title="ИИ-чат Orinax — беседа с моделями искусственного интеллекта"
-          className="p-1.5 rounded-md text-gray-400 dark:text-[#71717a] hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-[#27272a] transition-colors duration-200 shrink-0"
-        >
-          <Sparkles size={16} strokeWidth={1.75} />
-        </button>
+        {/* ИИ-чат — по центру между навигацией (Маркетинг) и блоком темы/профиля */}
+        <div className="flex-1 flex justify-center items-center min-w-0 px-2">
+          <button
+            type="button"
+            onClick={() => {
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(new Event("orinax:open-ai-chat"));
+              }
+            }}
+            title="ИИ-чат Orinax — беседа с моделями искусственного интеллекта"
+            className="p-1.5 rounded-md text-gray-400 dark:text-[#71717a] hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-[#27272a] transition-colors duration-200 shrink-0"
+          >
+            <Sparkles size={16} strokeWidth={1.75} />
+          </button>
+        </div>
 
         <ThemeToggle />
-
-        <button
-          type="button"
-          onClick={() => {
-            // Открывает SupportAssistantWidget (если он смонтирован в layout'е).
-            // Shift/Ctrl/Meta + клик — fallback на полную базу знаний.
-            if (typeof window !== "undefined") {
-              window.dispatchEvent(new Event("orinax:open-support"));
-            }
-          }}
-          onAuxClick={(e) => {
-            // Средняя кнопка мыши — открыть базу знаний в новой вкладке (legacy UX)
-            if (e.button === 1 && typeof window !== "undefined") {
-              e.preventDefault();
-              window.open("https://my.orinax.ai/knowledge", "_blank", "noopener,noreferrer");
-            }
-          }}
-          title="Помощник Orinax — спросите что угодно про платформу"
-          className="p-1.5 rounded-md text-gray-400 dark:text-[#71717a] hover:text-gray-600 dark:hover:text-[#a1a1aa] hover:bg-gray-100 dark:hover:bg-[#27272a] transition-colors duration-200 shrink-0"
-        >
-          <HelpCircle size={16} strokeWidth={1.75} />
-        </button>
 
         <div className="relative shrink-0" ref={dropdownRef}>
           <button
@@ -318,6 +297,19 @@ export function GlobalHeader({ onLogout, activeService }: GlobalHeaderProps = {}
                   <Settings size={14} className="text-gray-400 dark:text-[#71717a] shrink-0" />
                   Настройки
                 </a>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDropdownOpen(false);
+                    if (typeof window !== "undefined") {
+                      window.dispatchEvent(new Event("orinax:open-support"));
+                    }
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2 text-[13px] text-gray-600 dark:text-[#a1a1aa] hover:text-gray-900 dark:hover:text-[#fafafa] hover:bg-gray-50 dark:hover:bg-[#27272a] transition-colors duration-150"
+                >
+                  <HelpCircle size={14} className="text-gray-400 dark:text-[#71717a] shrink-0" />
+                  Помощник Orinax
+                </button>
                 <button
                   onClick={handleLogout}
                   className="w-full flex items-center gap-2.5 px-3.5 py-2 text-[13px] text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors duration-150"
